@@ -3,7 +3,7 @@ import numpy as np
 import cv2
 import os
 import time
-from utils.gazebo_world_generator import maptile_utiles
+from utils.maptile_utils import maptile_utiles
 
 
 def bit_to_img(url):

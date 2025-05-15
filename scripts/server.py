@@ -10,7 +10,8 @@ import mimetypes
 from utils.demTilesDownloader import download_dem_data
 from utils.file_writer import FileWriter
 from utils.utils import Utils
-from utils.gazebo_world_generator import generate_gazebo_world,maptile_utiles
+from utils.gazebo_world_generator import generate_gazebo_world
+from utils.maptile_utils import maptile_utiles
 from utils.param import globalParam
 
 app = Flask(__name__)
