@@ -9,12 +9,11 @@ import uuid
 import ssl
 import os
 import math
-
+from utils.param import globalParam
 from PIL import Image
 
 class Utils:
-	PARENT_DIR = os.path.dirname(os.path.abspath(__file__))	
-	TEMPFILE_PATH = os.path.join(PARENT_DIR, "temp")
+
 
 	@staticmethod
 	def randomString():
@@ -143,7 +142,7 @@ class Utils:
 			for childX, childY, childZ in childTiles:
 				
 				tempFile = Utils.randomString() + ".jpg"
-				tempFilePath = os.path.join(Utils.TEMPFILE_PATH, tempFile)
+				tempFilePath = os.path.join(globalParam.TEMPFILE_PATH, tempFile)
 
 				code = Utils.downloadFile(url, tempFilePath, childX, childY, childZ)
 

@@ -1,19 +1,17 @@
 import os
-
+from pathlib import Path
 
 class globalParam:
-    PARENT_DIR = os.path.dirname(os.path.abspath(__file__))	
-    TEMPFILE_PATH = os.path.join(PARENT_DIR, "temp")
-    
 
-    GAZEBO_WORLD_PATH    = None 
-    HEIGHTMAP_RESOLUTION = 11  
-    DEM_PATH            = None
+    TEMP_PATH                   =  str(Path(__file__).resolve().parents[2] / 'temp')
+    OUTPUT_BASE_PATH            = str(Path(__file__).resolve().parents[2] / 'output')
 
+    GAZEBO_WORLD_PATH           = os.path.join(OUTPUT_BASE_PATH,'gazebo_terrian')  
+    HEIGHTMAP_RESOLUTION        = 11  
+    DEM_PATH                    = os.path.join(OUTPUT_BASE_PATH, 'dem')
 
 
     # Set the global config
-    TEMPORARY_SATELLITE_IMAGE = os.path.join(os.path.dirname(os.path.abspath(__file__)),'temp/gazebo_terrian')
-    TEMPLATE_DIR_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),'templates')
-
+    TEMPORARY_SATELLITE_IMAGE    = os.path.join(TEMP_PATH,'gazebo_terrian')
+    TEMPLATE_DIR_PATH            =  str(Path(__file__).resolve().parents[2] / 'templates')
 

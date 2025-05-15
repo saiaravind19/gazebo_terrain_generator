@@ -11,11 +11,14 @@ from utils.demTilesDownloader import download_dem_data
 from utils.file_writer import FileWriter
 from utils.utils import Utils
 from utils.gazebo_world_generator import generate_gazebo_world,maptile_utiles
+from utils.param import globalParam
 
 app = Flask(__name__)
 lock = threading.Lock()
 
-output_base_path = str(Path(__file__).resolve().parents[1] / 'output')
+
+
+
 outputdirectory = None
 
 def random_string():
@@ -48,7 +51,7 @@ def download_tile():
 		outputDirectory = outputDirectory.replace(f"{{{key}}}", value)
 		outputFile = outputFile.replace(f"{{{key}}}", value)
 
-	filePath = os.path.join(output_base_path, outputDirectory, outputFile)
+	filePath = os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory, outputFile)
 
 	result = {}
 	if FileWriter.exists(filePath, x, y, z):
@@ -85,10 +88,10 @@ def start_download():
 
 	outputDirectory = outputDirectory.replace("{timestamp}", str(timestamp))
 	outputFile = outputFile.replace("{timestamp}", str(timestamp))
-	filePath = os.path.join(output_base_path, outputDirectory, outputFile)
+	filePath = os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory, outputFile)
 
 	FileWriter.addMetadata(
-		lock, os.path.join(output_base_path, outputDirectory), filePath, outputFile,
+		lock, os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory), filePath, outputFile,
 		"Map Tiles Downloader via AliFlux", "jpg", bounds, center, area_rect,
 		zoom_level, "mercator", 256 * outputScale
 	)
@@ -109,18 +112,18 @@ def end_download():
 
 	outputDirectory = outputDirectory.replace("{timestamp}", str(timestamp))
 	outputFile = outputFile.replace("{timestamp}", str(timestamp))
-	filePath = os.path.join(output_base_path, outputDirectory, outputFile)
+	filePath = os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory, outputFile)
 
-	FileWriter.close(lock, os.path.join(output_base_path, outputDirectory), filePath, zoom_level)
+	FileWriter.close(lock, os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory), filePath, zoom_level)
 
 	print(bounds)
 	true_boundaries = maptile_utiles.get_true_boundaries(bounds,zoom_level)
-	download_dem_data(true_boundaries, os.path.join(output_base_path, "dem"))
-	orthodir_path = os.path.join(output_base_path, outputDirectory)
-	generate_gazebo_world(output_base_path,orthodir_path)
+	download_dem_data(true_boundaries, os.path.join(globalParam.OUTPUT_BASE_PATH, "dem"))
+	orthodir_path = os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory)
+	generate_gazebo_world(orthodir_path)
 
 	global outputdirectory
-	outputdirectory = os.path.join(output_base_path, outputDirectory)
+	outputdirectory = os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory)
 
 	return jsonify({"code": 200, "message": "Download ended"})
 

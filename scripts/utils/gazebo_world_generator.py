@@ -3,19 +3,14 @@ import os, cv2, shutil
 import json
 import numpy as np
 from utils.file_writer import FileWriter
+import mercantile
+from utils.param import globalParam
+
 from geopy.distance import geodesic
 from geopy.distance import distance
 from geopy.point import Point
-import mercantile
 
-class globalParam:
-    GAZEBO_WORLD_PATH    = None 
-    HEIGHTMAP_RESOLUTION = None  
-    DEM_PATH            = None
 
-    # Set the global config
-    TEMPORARY_SATELLITE_IMAGE = os.path.join(os.path.dirname(os.path.abspath(__file__)),'temp/gazebo_terrian')
-    TEMPLATE_DIR_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),'templates')
 
 class maptile_utiles:
 
@@ -349,7 +344,6 @@ class heightmapgenerator(orthoGenerator):
         lon_max = boundaries["northeast"][1]
         lon_min = boundaries["southwest"][1]
         dem_tile_path = os.path.join(globalParam.DEM_PATH, str(globalParam.HEIGHTMAP_RESOLUTION), str(tile_x), str(tile_y)+'.png')
-        print("dem tile path",dem_tile_path)
         if os.path.isfile(dem_tile_path) == True:
             # read the image from the tile
             dem_img = cv2.imread(dem_tile_path)
@@ -360,6 +354,8 @@ class heightmapgenerator(orthoGenerator):
             py = (lat_max - lat) / (lat_max - lat_min) * height
             # from pixel read the image and get the height
             r,g,b = dem_img[int(py), int(px)]  
+            r, g, b = int(r), int(g), int(b)
+
             # convert the pixel value to height 
             # reference : https://docs.mapbox.com/data/tilesets/reference/mapbox-terrain-dem-v1/
             height = ((r * 256 * 256 + g * 256 + b) * 0.1) - 10000
@@ -476,11 +472,8 @@ class heightmapgenerator(orthoGenerator):
         FileWriter.write_world_file(template, self.model_name,origin_cord["latitude"],origin_cord["longitude"],os.path.join(globalParam.GAZEBO_WORLD_PATH, self.model_name),centre_height)
 
 
-def generate_gazebo_world(base_path,tile_path):    
+def generate_gazebo_world(tile_path):    
 
-    globalParam.GAZEBO_WORLD_PATH       = os.path.join(base_path,'gazebo_terrian')  
-    globalParam.HEIGHTMAP_RESOLUTION    = 11
-    globalParam.DEM_PATH                = os.path.join(base_path,'dem')
     # Main loop to select directory and trigger functions
     directory_path = tile_path
     print("Map tiles directory being used : ",directory_path)

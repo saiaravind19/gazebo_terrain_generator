@@ -3,7 +3,7 @@ import numpy as np
 import cv2
 import os
 import time
-from.gazebo_world_generator import maptile_utiles
+from utils.gazebo_world_generator import maptile_utiles
 
 
 def bit_to_img(url):
@@ -22,22 +22,20 @@ def bit_to_img(url):
 # Function to download and save the images (runs in a separate thread)
 def download_dem_data(bound_array,output_directory):
     try:
+        # some issue with boundary array
+
         print(bound_array)
         # Get the values from the input fields
-        strt_lat_deg = float(bound_array["northwest"][1])
-        strt_lon_deg = float(bound_array["northwest"][0])
-        fnl_lat_deg = float(bound_array["southeast"][1])
-        fnl_lon_deg = float(bound_array["southeast"][0])
+        nw_lat_deg = float(bound_array["northwest"][0])
+        nw_lon_deg = float(bound_array["northwest"][1])
+        se_lat_deg = float(bound_array["southeast"][0])
+        se_lon_deg = float(bound_array["southeast"][1])
         
-        print(strt_lat_deg, strt_lon_deg, fnl_lat_deg, fnl_lon_deg)
+        print(nw_lat_deg, nw_lon_deg, se_lat_deg, se_lon_deg)
         #Todo: check if directory exists
         MAX_LAT = 85.0511  # Web Mercator limit
         zoom_start = 10
         zoom_end = 11
-
-        # Clamp latitude to Web Mercator bounds
-        strt_lat_deg = np.clip(strt_lat_deg, -MAX_LAT, MAX_LAT)
-        fnl_lat_deg = np.clip(fnl_lat_deg, -MAX_LAT, MAX_LAT)
 
 
         # Create base output directory
@@ -45,8 +43,13 @@ def download_dem_data(bound_array,output_directory):
 
         for zoom in range(zoom_start, zoom_end + 1):
 
-            start_tilex, start_tiley = maptile_utiles.lat_lon_to_tile(strt_lat_deg, strt_lon_deg, zoom)
-            end_tilex, end_tiley = maptile_utiles.lat_lon_to_tile(fnl_lat_deg, fnl_lon_deg, zoom)
+            nw_tilex, nw_tiley = maptile_utiles.lat_lon_to_tile(nw_lat_deg, nw_lon_deg, zoom)
+            se_tilex, se_tiley = maptile_utiles.lat_lon_to_tile(se_lat_deg, se_lon_deg, zoom)
+
+            start_tilex = min(nw_tilex, se_tilex)
+            end_tilex =  max(nw_tilex, se_tilex)
+            start_tiley = min(nw_tiley, se_tiley)
+            end_tiley =  max(nw_tiley, se_tiley)
 
             print(f"Zoom Level: {zoom}")
             print(f"Tile Range X: {start_tilex} to {end_tilex}, Y: {start_tiley} to {end_tiley}")

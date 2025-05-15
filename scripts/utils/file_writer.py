@@ -1,6 +1,7 @@
 import os
 import json
 import shutil
+from utils.param import globalParam
 
 
 
@@ -23,11 +24,11 @@ class FileWriter:
 		lock.acquire()
 		try:
 
-			if not os.path.exists('temp'):
-				os.makedirs('temp')
+			if not os.path.exists(globalParam.TEMP_PATH):
+				os.makedirs(globalParam.TEMP_PATH)
 
-			if not os.path.exists('output'):
-				os.makedirs('output')
+			if not os.path.exists(globalParam.OUTPUT_BASE_PATH):
+				os.makedirs(globalParam.OUTPUT_BASE_PATH)
 
 			os.makedirs(directory, exist_ok=True)
 
