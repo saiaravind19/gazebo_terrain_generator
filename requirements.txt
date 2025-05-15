@@ -1,0 +1,5 @@
+Pillow==7.1.2 
+geopy==2.4.1
+opencv-python==4.2.0.34
+PyQt5==5.15.5
+mercantile 
