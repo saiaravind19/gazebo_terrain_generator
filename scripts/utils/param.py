@@ -7,7 +7,7 @@ class globalParam:
     OUTPUT_BASE_PATH            = str(Path(__file__).resolve().parents[2] / 'output')
 
     GAZEBO_WORLD_PATH           = os.path.join(OUTPUT_BASE_PATH,'gazebo_terrian')  
-    HEIGHTMAP_RESOLUTION        = 11  
+    HEIGHTMAP_RESOLUTION        = 10 
     DEM_PATH                    = os.path.join(OUTPUT_BASE_PATH, 'dem')
 
 

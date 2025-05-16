@@ -236,9 +236,7 @@ class heightmapgenerator(orthoGenerator):
         Returns:
             float: Height above mean sea level in meters.
         """
-        # Assuming self.dem_instance is an instance of a DEM class that has a getAMSL method
         tile_x,tile_y = maptile_utiles.lat_lon_to_tile(lat, lon,globalParam.HEIGHTMAP_RESOLUTION)
-        
         boundaries = maptile_utiles.get_tile_bounds(tile_x, tile_y, globalParam.HEIGHTMAP_RESOLUTION)
         # check if tile exist
         lat_max = boundaries["northeast"][0]
@@ -247,21 +245,20 @@ class heightmapgenerator(orthoGenerator):
         lon_min = boundaries["southwest"][1]
         dem_tile_path = os.path.join(globalParam.DEM_PATH, str(globalParam.HEIGHTMAP_RESOLUTION), str(tile_x), str(tile_y)+'.png')
         if os.path.isfile(dem_tile_path) == True:
-            # read the image from the tile
+            # read the image from the tile its a gbr image format
             dem_img = cv2.imread(dem_tile_path)
             #get the size of the image
             height,width = dem_img.shape[:2]
             # from boundaries and the desiderd lat long get the pixel coordinates
-            px = (lon - lon_min) / (lon_max - lon_min) * width
-            py = (lat_max - lat) / (lat_max - lat_min) * height
+            px = int((lon - lon_min) / (lon_max - lon_min) * width)
+            py = int((lat_max - lat) / (lat_max - lat_min) * height)
             # from pixel read the image and get the height
-            r,g,b = dem_img[int(py), int(px)]  
-            r, g, b = int(r), int(g), int(b)
-
+            b,g,r = dem_img[py,px]  
+            b,g,r = float(b), float(g), float(r)
             # convert the pixel value to height 
             # reference : https://docs.mapbox.com/data/tilesets/reference/mapbox-terrain-dem-v1/
             height = ((r * 256 * 256 + g * 256 + b) * 0.1) - 10000
-
+            print(height)
             return height
 
         else :
