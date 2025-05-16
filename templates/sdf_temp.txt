@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 <sdf version="1.6">
-    <model name=$MODEL$>
+    <model name="$MODEL$">
       <static>true</static>
       <link name="link">
         <collision name="collision">

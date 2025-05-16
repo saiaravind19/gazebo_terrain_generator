@@ -258,7 +258,6 @@ class heightmapgenerator(orthoGenerator):
             # convert the pixel value to height 
             # reference : https://docs.mapbox.com/data/tilesets/reference/mapbox-terrain-dem-v1/
             height = ((r * 256 * 256 + g * 256 + b) * 0.1) - 10000
-            print(height)
             return height
 
         else :
