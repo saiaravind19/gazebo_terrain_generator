@@ -211,6 +211,8 @@ class FileWriter:
 		heightmap = model_name+'_height_map.png'
 		aerialimg = model_name+'_aerial.png'
     	# Filling in content
+		sdf_template = sdf_template.replace("$MODEL$", str(model_name))
+
 		sdf_template = sdf_template.replace("$MODELNAME$", model_name)
 		sdf_template = sdf_template.replace("$SIZEX$", str(size_x))
 		sdf_template = sdf_template.replace("$SIZEY$", str(size_y))
