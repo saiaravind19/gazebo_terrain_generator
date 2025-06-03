@@ -1,4 +1,5 @@
 scripts/utils/temp/
 
 output/
+temp/
 *.pyc

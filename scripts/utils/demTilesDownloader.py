@@ -6,7 +6,7 @@ import time
 from utils.maptile_utils import maptile_utiles
 
 
-def bit_to_img(url):
+def fetch_image_from_url(url):
     try:
         resp = request.urlopen(url)
         img = np.asarray(bytearray(resp.read()), dtype="uint8")
@@ -18,64 +18,57 @@ def bit_to_img(url):
         print(f"Failed to download or decode image from {url}: {e}")
         return None
 
+def download_tile_image(zoom: int, x: int, y: int, output_dir: str) -> None:
+    """Download and save a single tile image to the specified path."""
+    tile_url = (
+        f"https://api.mapbox.com/raster/v1/mapbox.mapbox-terrain-dem-v1/"
+        f"{zoom}/{x}/{y}.webp?sku=101CUGorpzzyK&access_token=pk.eyJ1IjoicHJhdmlubWFsaTg1NCIsImEiOiJjbDM4Y2ZpaDIwMDdkM2JxbGM0ZWtkamxxIn0.VStYkAceQjhkW8StZekEvg"
+    )
+    img = fetch_image_from_url(tile_url)
+    if img is not None:
+        file_path = os.path.join(output_dir, f"{y}.png")
+        cv2.imwrite(file_path, img)
+        print(f"[INFO] Saved: {file_path}")
+    else:
+        print(f"[WARN] Skipped tile ({x}, {y}) due to download error.")
 
-# Function to download and save the images (runs in a separate thread)
-def download_dem_data(bound_array,output_directory):
+
+def download_dem_data(bound_array,output_directory, zoom_range: tuple = (10, 11)):
+    """
+    Download DEM data tiles within a bounding box.
+
+    Args:
+        boundary (dict): Contains 'northwest' and 'southeast' keys with (lat, lon) tuples.
+        output_root (str): Root directory to save tiles.
+        zoom_range (tuple): Range of zoom levels (start, end inclusive).
+    """
+
     try:
-        # some issue with boundary array
+        nw_lat, nw_lon = map(float, bound_array["northwest"])
+        se_lat, se_lon = map(float, bound_array["southeast"])
 
-        print(bound_array)
-        # Get the values from the input fields
-        nw_lat_deg = float(bound_array["northwest"][0])
-        nw_lon_deg = float(bound_array["northwest"][1])
-        se_lat_deg = float(bound_array["southeast"][0])
-        se_lon_deg = float(bound_array["southeast"][1])
-        
-        print(nw_lat_deg, nw_lon_deg, se_lat_deg, se_lon_deg)
         #Todo: check if directory exists
         MAX_LAT = 85.0511  # Web Mercator limit
-        zoom_start = 10
-        zoom_end = 11
-
-
+        
         # Create base output directory
-        os.makedirs(output_directory, exist_ok=True)
+        maptile_utiles.dir_check(output_directory)
 
-        for zoom in range(zoom_start, zoom_end + 1):
+        for zoom in range(zoom_range[0], zoom_range[1] + 1):
 
-            nw_tilex, nw_tiley = maptile_utiles.lat_lon_to_tile(nw_lat_deg, nw_lon_deg, zoom)
-            se_tilex, se_tiley = maptile_utiles.lat_lon_to_tile(se_lat_deg, se_lon_deg, zoom)
+            nw_tilex, nw_tiley = maptile_utiles.lat_lon_to_tile(nw_lat, nw_lon, zoom)
+            se_tilex, se_tiley = maptile_utiles.lat_lon_to_tile(se_lat, se_lon, zoom)
 
-            start_tilex = min(nw_tilex, se_tilex)
-            end_tilex =  max(nw_tilex, se_tilex)
-            start_tiley = min(nw_tiley, se_tiley)
-            end_tiley =  max(nw_tiley, se_tiley)
-
-            print(f"Zoom Level: {zoom}")
-            print(f"Tile Range X: {start_tilex} to {end_tilex}, Y: {start_tiley} to {end_tiley}")
+            tilex_start, tilex_end = sorted((nw_tilex, se_tilex))
+            tiley_start, tiley_end = sorted((nw_tiley, se_tiley))
 
             zoom_dir = os.path.join(output_directory, str(zoom))
-            os.makedirs(zoom_dir, exist_ok=True)
+            maptile_utiles.dir_check(zoom_dir)
 
-            for x in range(start_tilex, end_tilex + 1):
+            for x in range(tilex_start, tilex_end + 1):
                 x_dir = os.path.join(zoom_dir, str(x))
-                os.makedirs(x_dir, exist_ok=True)
+                maptile_utiles.dir_check(x_dir)
 
-                for y in range(start_tiley, end_tiley + 1):
-                    tile_url = (
-                        f"https://api.mapbox.com/raster/v1/mapbox.mapbox-terrain-dem-v1/"
-                        f"{zoom}/{x}/{y}.webp?sku=101CUGorpzzyK&access_token=pk.eyJ1IjoicHJhdmlubWFsaTg1NCIsImEiOiJjbDM4Y2ZpaDIwMDdkM2JxbGM0ZWtkamxxIn0.VStYkAceQjhkW8StZekEvg"
-                    )
-
-                    try:
-                        img = bit_to_img(tile_url)
-                        file_path = os.path.join(x_dir, f"{y}.png")
-                        cv2.imwrite(file_path, img)
-                        print(f"Saved: {file_path}")
-                        time.sleep(0.001)
-
-                    except Exception as e:
-                        print(f"Failed to download tile ({x}, {y}): {e}")
-
+                for y in range(tiley_start, tiley_end + 1):
+                    download_tile_image(zoom, x, y, x_dir)
     except Exception as e:
         print(f"Download failed: {e}")

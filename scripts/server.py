@@ -18,13 +18,43 @@ app = Flask(__name__)
 lock = threading.Lock()
 
 
+task_status = {"status": "idle"}  # Global variable to track task status
 
 
 outputdirectory = None
 
 def random_string():
+
 	return uuid.uuid4().hex.upper()[0:6]
 
+
+
+
+def process_end_download(bounds, zoom_level, outputDirectory, outputFile, filePath):
+    global task_status
+    try:
+        task_status["status"] = "in_progress"
+
+        # Perform the long-running task
+        FileWriter.close(lock, os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory), filePath, zoom_level)
+        true_boundaries = maptile_utiles.get_true_boundaries(bounds, zoom_level)
+        download_dem_data(true_boundaries, os.path.join(globalParam.OUTPUT_BASE_PATH, "dem"))
+        orthodir_path = os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory)
+        generate_gazebo_world(orthodir_path)
+
+        task_status["status"] = "completed"
+        print("Gazebo world generation completed successfully.")
+    except Exception as e:
+        task_status["status"] = "failed"
+        print(f"Error during processing: {e}")
+
+@app.route('/task-status', methods=['GET'])
+def task_status_endpoint():
+	global task_status
+	result = {}
+	result["code"] = 200
+	result["message"] = task_status
+	return jsonify(result)
 
 @app.route('/download-tile', methods=['POST'])
 def download_tile():
@@ -76,6 +106,7 @@ def download_tile():
 
 @app.route('/start-download', methods=['POST'])
 def start_download():
+
 	postvars = request.form
 	outputType = postvars['outputType']
 	outputScale = int(postvars['outputScale'])
@@ -96,7 +127,8 @@ def start_download():
 		"Map Tiles Downloader via AliFlux", "jpg", bounds, center, area_rect,
 		zoom_level, "mercator", 256 * outputScale
 	)
-
+	global task_status
+	task_status = {"status": "idle"} 
 	return jsonify({"code": 200, "message": "Metadata written"})
 
 @app.route('/end-download', methods=['POST'])
@@ -116,15 +148,19 @@ def end_download():
 	filePath = os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory, outputFile)
 
 	FileWriter.close(lock, os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory), filePath, zoom_level)
+    # Start the long-running task in a background thread
+	thread = threading.Thread(target=process_end_download, args=(bounds, zoom_level, outputDirectory, outputFile, filePath))
+	thread.start()
 
+	'''''
 	print(bounds)
 	true_boundaries = maptile_utiles.get_true_boundaries(bounds,zoom_level)
 	download_dem_data(true_boundaries, os.path.join(globalParam.OUTPUT_BASE_PATH, "dem"))
 	orthodir_path = os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory)
-	generate_gazebo_world(orthodir_path)
+	generate_gazebo_world(orthodir_path)'''
 
-	global outputdirectory
-	outputdirectory = os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory)
+	#global outputdirectory
+	#outputdirectory = os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory)
 
 	return jsonify({"code": 200, "message": "Download ended"})
 
@@ -137,5 +173,4 @@ def serve_static(path):
 
 if __name__ == '__main__':
 	print("Starting Flask server...")
-	print("Open http://localhost:8080/ to view the application.")
 	app.run(host='0.0.0.0', port=8080, threaded=True)

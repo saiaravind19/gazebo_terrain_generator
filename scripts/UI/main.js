@@ -418,7 +418,40 @@ $(function() {
 		var strip = $(".tile-strip");
 		strip.prepend(image)
 	}
-
+	// Function to poll the task status
+	async function pollTaskStatus() {
+	    try {
+	        // Call the /task-status endpoint
+	        var response = await $.ajax({
+	            url: "/task-status",
+	            async: true,
+	            timeout: 30 * 1000,
+	            type: "get",
+	            dataType: 'json',
+	        });
+			
+			if (response.code === 200) {
+				var status = response.message.status; // Extract the status field
+				console.log("Task status:", status); // Debugging log
+	
+				// Check the task status
+				if (status === "completed") {
+					logItemRaw("Gazebo world generated successfully.");
+					$("#stop-button").html("FINISH");
+				} else if (status === "in_progress") {
+					logItemRaw("World Generation Inprogress..");
+					setTimeout(() => pollTaskStatus(), 5000); // Poll every 5 seconds
+				} else {
+					logItemRaw("Unexpected status: " + status);
+				}
+			} else {
+				logItemRaw("Unexpected response code: " + response.code);
+			}
+	    } catch (error) {
+	        logItemRaw("Error while checking task status: " + error.statusText);
+	        setTimeout(() => pollTaskStatus(taskId), 5000); // Retry after 5 seconds
+	    }
+	}
 	async function startDownloading() {
 
 		if(draw.getAll().features.length == 0) {
@@ -563,10 +596,15 @@ $(function() {
 			})
 
 			updateProgress(allTiles.length, allTiles.length);
-			logItemRaw("All requests are done");
-
+			logItemRaw("Starting World Generation");
+			pollTaskStatus(); // Start polling with the task ID
 			$("#stop-button").html("FINISH");
-		});
+
+		},
+
+	
+	);
+
 
 	}
 

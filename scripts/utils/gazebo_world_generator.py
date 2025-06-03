@@ -9,6 +9,7 @@ from utils.maptile_utils import maptile_utiles
 from geopy.distance import geodesic
 from geopy.distance import distance
 from geopy.point import Point
+from multiprocessing import Pool, cpu_count
 
 
 
@@ -118,23 +119,6 @@ class orthoGenerator:
         """ 
         return img1.shape[:2] == img2.shape[:2]
 
-    @staticmethod
-    def dir_check(path: str) -> None:
-        """
-        Check directory existence and create if not exists.
-
-        Args:
-            path (str): Path to directory.
-
-        Returns:
-            None
-        """
-
-        if not os.path.exists(path):
-            os.makedirs(path)
-        else:
-            shutil.rmtree(path)
-            os.makedirs(path)
 
 
     def get_x_image_dirlist(self, image_dir: str, tile_boundaries: dict) -> list:
@@ -159,7 +143,29 @@ class orthoGenerator:
 
         return x_dirs
        
-            
+    def process_column_image(self, dir_name, image_dir, tile_boundaries, temp_output_dir):
+        image_list = []
+        max_y = max(tile_boundaries["northwest"][1], tile_boundaries["southwest"][1])
+        min_y = min(tile_boundaries["northwest"][1], tile_boundaries["southwest"][1])
+
+        dir_path = os.path.join(image_dir, dir_name)
+        for image in os.listdir(dir_path):
+            tile_num = int(image.split('.')[0])
+            if min_y <= tile_num <= max_y:
+                image_list.append(os.path.join(dir_path, image))
+
+        image_list.sort()
+        images = [cv2.imread(path) for path in image_list if os.path.exists(path)]
+        if images:
+            output_file = os.path.join(temp_output_dir, dir_name + '.png')
+            cv2.imwrite(output_file, cv2.vconcat(images))
+
+    @staticmethod
+    def _run_instance_method(args):
+        instance, dir_name, image_dir, tile_boundaries, temp_output_dir = args
+        instance.process_column_image(dir_name, image_dir, tile_boundaries, temp_output_dir)
+
+        
 
     def generate_ortho(self,path: str)-> None:
         """
@@ -175,32 +181,29 @@ class orthoGenerator:
         image_dir = os.path.join(path, str(self.zoomlevel))
         
         # Check and create necessary directories
-        orthoGenerator.dir_check(os.path.join(globalParam.GAZEBO_WORLD_PATH, self.model_name, 'textures'))
-        orthoGenerator.dir_check(os.path.join(globalParam.TEMPORARY_SATELLITE_IMAGE, self.model_name))
+        maptile_utiles.dir_check(os.path.join(globalParam.GAZEBO_WORLD_PATH, self.model_name, 'textures'))
+        maptile_utiles.dir_check(os.path.join(globalParam.TEMPORARY_SATELLITE_IMAGE, self.model_name))
         bound_array = self.boundaries.split(',')
         tile_boundaries = maptile_utiles.get_max_tilenumber(bound_array,self.zoomlevel)
         image_dir_list = self.get_x_image_dirlist(image_dir,tile_boundaries)
-        # Generate and concatenate images vertically
-        for dir in image_dir_list:
-            image_list = []
-            max_y = max(tile_boundaries["northwest"][1], tile_boundaries["southwest"][1])
-            min_y = min(tile_boundaries["northwest"][1], tile_boundaries["southwest"][1])
 
-            for image in os.listdir(os.path.join(image_dir, dir)):
-                tile_num = int(image.split('.')[0])
-                if  min_y <= tile_num <= max_y:
-                    image_list.append(os.path.join(image_dir, dir, image))
-            
-            image_list.sort()            
-            images = [cv2.imread(path) for path in image_list]
-            cv2.imwrite(os.path.join(globalParam.TEMPORARY_SATELLITE_IMAGE, self.model_name, dir+'.png'), cv2.vconcat(images))
-        # Concatenate images horizontally
-        image_list = []
-        for image in os.listdir((os.path.join(globalParam.TEMPORARY_SATELLITE_IMAGE, self.model_name))):
-            image_list.append(os.path.join(globalParam.TEMPORARY_SATELLITE_IMAGE, self.model_name, image))
-            image_list.sort()
+
+        temp_output_dir = os.path.join(globalParam.TEMPORARY_SATELLITE_IMAGE, self.model_name)
+        args_list = [
+            (self, dir_name, image_dir, tile_boundaries, temp_output_dir)
+            for dir_name in image_dir_list
+        ]
+        #  Multiprocessing call
+        with Pool(processes=cpu_count()) as pool:
+            pool.map(orthoGenerator._run_instance_method, args_list)
+
+        image_list = sorted([
+            os.path.join(temp_output_dir, img)
+            for img in os.listdir(temp_output_dir) if img.endswith('.png')
+        ])            
         images = [cv2.imread(path) for path in image_list]
         filtered_images = [images[0]]
+
         for img in images[1:]:
             if orthoGenerator.are_dimensions_equal(filtered_images[-1], img):
                 filtered_images.append(img)
@@ -224,7 +227,6 @@ class orthoGenerator:
 class heightmapgenerator(orthoGenerator):
     def __init__(self,path : str):
         super().__init__(path)
-        print("using dem class")
 
 
     def get_amsl(self, lat: float, lon: float):
@@ -389,4 +391,7 @@ def generate_gazebo_world(tile_path):
         # Generate SDF file for the world
         world_generator.gen_sdf(sizex,sizey,sizez, posez)
         world_generator.gen_world()
+        print(os.path.join(globalParam.TEMPORARY_SATELLITE_IMAGE, os.path.basename(directory_path)))
         shutil.rmtree(os.path.join(globalParam.TEMPORARY_SATELLITE_IMAGE, os.path.basename(directory_path)))
+
+

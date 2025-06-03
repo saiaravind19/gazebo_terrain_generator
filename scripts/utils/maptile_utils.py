@@ -1,4 +1,5 @@
 import mercantile
+import os,shutil
 
 
 class maptile_utiles:
@@ -97,3 +98,21 @@ class maptile_utiles:
         lat = max(min(lat, 85.0511), -85.0511)
         tile = mercantile.tile(lon, lat, zoom)
         return tile.x, tile.y
+
+    @staticmethod
+    def dir_check(path: str) -> None:
+        """
+        Check directory existence and create if not exists.
+
+        Args:
+            path (str): Path to directory.
+
+        Returns:
+            None
+        """
+
+        if not os.path.exists(path):
+            os.makedirs(path)
+        else:
+            shutil.rmtree(path)
+            os.makedirs(path)
