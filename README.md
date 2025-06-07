@@ -1,20 +1,82 @@
-# GAzebo Terrian Generator
+# Gazebo Terrain Generator
 
-A super easy to use GUI for downloading map tiles and generating 3d gazebo terrain.
+A super easy-to-use tool for generating 3D Gazebo terrain.
 
-[![Project Demo](https://img.youtube.com/vi/pxL2UF9xl_w/0.jpg)](https://www.youtube.com/watch?v=pxL2UF9xl_w)
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=pxL2UF9xl_w">
+    <img src="gif/thumnail.png" alt="Project Demo" width="1050"/>
+  </a>
+</p>
 
 
 
-### Run Maptile downloader via command line
-1. Navigate to `maptilesdownloader` directory.
+## 🛠️ Setup Instructions
 
-    ```sh
-    cd maptilesdownloader/src
-    python server.py
-    ```
+### 1. Create and Activate Virtual Environment (Recommended)
+
+It's recommended to use a virtual environment to avoid dependency conflicts:
+
+<details>
+<summary><strong>For Linux/macOS</strong></summary>
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+</details>
+
+<details>
+<summary><strong>For Windows</strong></summary>
+
+```bash
+python -m venv venv
+venv\Scripts\activate
+```
+
+</details>
+
+### 2. Install Requirements
+
+Make sure your virtual environment is active, then install all required Python packages using:
+
+```bash
+pip install -r requirements.txt
+```
+
+
+## 3. Run Gazebo world Generator
+1. Navigate to the `gazebo_terrian_generator` repository:
+
+   ```bash
+   cd gazebo_terrian_generator/scripts
+   python server.py
+   ```
+
 2. To access application open up your web browser and navigate to `http://localhost:8080`.
 3. The output map tiles will be in the `output\{timestamp}\` directory by default chnage it as per choice.
+
+
+### 4. Spawning the gazebo world
+1. Export gazebo resource path based on your gazebo version
+
+#### Gazebo Resource Path Support
+| Gazebo Version |  Resource Path Variable(s)| Support|
+|----------------|---------------------------|--------|
+| **Ignition** (Citadel, Edifice, Fortress)| `export IGN_GAZEBO_RESOURCE_PATH=$IGN_GAZEBO_RESOURCE_PATH:~/"<your model directory path>"` |✅ |
+| **Garden**      | `export IGN_GAZEBO_RESOURCE_PATH=$IGN_GAZEBO_RESOURCE_PATH:~/"<your model directory path>"`|✅ | 
+| **Harmonic**    | `export GZ_SIM_RESOURCE_PATH=$GZ_SIM_RESOURCE_PATH:~/"<your path here>"` |✅ |
+
+2. Run the gazebo with required world.
+
+  ```bash
+    ign gazbeo <path of your  world file>
+  ```
+
+  ```bash
+    gz sim <path of your  world file file>
+  ```
+**Note:** Replace path with your actual path of the .world.
 
 
 ## Important Disclaimer
@@ -23,7 +85,4 @@ Downloading map tiles is subject to the terms and conditions of the tile provide
 
 ## License
 
-This software is released under the [MIT License](LICENSE). Please read LICENSE for information on the
-software availability and distribution.
-
-Copyright (c) 2020 [Ali Ashraf](http://aliashraf.net)
+This project uses work of[Ali Ashraf](http://aliashraf.net).
