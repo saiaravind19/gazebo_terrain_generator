@@ -152,16 +152,6 @@ def end_download():
 	thread = threading.Thread(target=process_end_download, args=(bounds, zoom_level, outputDirectory, outputFile, filePath))
 	thread.start()
 
-	'''''
-	print(bounds)
-	true_boundaries = maptile_utiles.get_true_boundaries(bounds,zoom_level)
-	download_dem_data(true_boundaries, os.path.join(globalParam.OUTPUT_BASE_PATH, "dem"))
-	orthodir_path = os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory)
-	generate_gazebo_world(orthodir_path)'''
-
-	#global outputdirectory
-	#outputdirectory = os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory)
-
 	return jsonify({"code": 200, "message": "Download ended"})
 
 @app.route('/', defaults={'path': 'index.htm'})

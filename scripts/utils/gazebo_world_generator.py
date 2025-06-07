@@ -222,6 +222,7 @@ class orthoGenerator:
     def gen_terrain(self)-> list: 
         pass
     
+
   
 
 class heightmapgenerator(orthoGenerator):
@@ -238,14 +239,14 @@ class heightmapgenerator(orthoGenerator):
         Returns:
             float: Height above mean sea level in meters.
         """
-        tile_x,tile_y = maptile_utiles.lat_lon_to_tile(lat, lon,globalParam.HEIGHTMAP_RESOLUTION)
-        boundaries = maptile_utiles.get_tile_bounds(tile_x, tile_y, globalParam.HEIGHTMAP_RESOLUTION)
+        tile_x,tile_y = maptile_utiles.lat_lon_to_tile(lat, lon,globalParam.DEM_RESOLUTION)
+        boundaries = maptile_utiles.get_tile_bounds(tile_x, tile_y, globalParam.DEM_RESOLUTION)
         # check if tile exist
         lat_max = boundaries["northeast"][0]
         lat_min = boundaries["southwest"][0]
         lon_max = boundaries["northeast"][1]
         lon_min = boundaries["southwest"][1]
-        dem_tile_path = os.path.join(globalParam.DEM_PATH, str(globalParam.HEIGHTMAP_RESOLUTION), str(tile_x), str(tile_y)+'.png')
+        dem_tile_path = os.path.join(globalParam.DEM_PATH, str(globalParam.DEM_RESOLUTION), str(tile_x), str(tile_y)+'.png')
         if os.path.isfile(dem_tile_path) == True:
             # read the image from the tile its a gbr image format
             dem_img = cv2.imread(dem_tile_path)
