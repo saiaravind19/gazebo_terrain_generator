@@ -65,6 +65,8 @@ pip install -r requirements.txt
 | **Ignition** and later | `export IGN_GAZEBO_RESOURCE_PATH=$IGN_GAZEBO_RESOURCE_PATH:~/<your model directory path>` |
 | **Harmonic**    | `export GZ_SIM_RESOURCE_PATH=$GZ_SIM_RESOURCE_PATH:~/<your model path here>` |
 
+
+
 2. Run Gazebo with the required world file.
 
 | Gazebo Version |  Resource Path Variable(s)|
@@ -73,6 +75,24 @@ pip install -r requirements.txt
 | **Harmonic**    |  `gz sim <path of your  world file file>` |
 
 **Note:** Replace path with your actual path of the .world.
+
+
+## Spawing sample worlds Example: 
+
+1. Export the gazebo model path
+
+| Gazebo Version |  Resource Path Variable(s)|
+|----------------|---------------------------|
+| **Ignition** and later | `export IGN_GAZEBO_RESOURCE_PATH=$IGN_GAZEBO_RESOURCE_PATH:~/gazebo_terrian_generator/sample_worlds` |
+| **Harmonic**    | `export GZ_SIM_RESOURCE_PATH=$GZ_SIM_RESOURCE_PATH:~/gazebo_terrian_generator/sample_worlds` |
+
+
+2. Spawing gazebo world.
+
+| Gazebo Version |  Resource Path Variable(s)|
+|----------------|---------------------------|
+| **Ignition** and later | `ign gazebo prayag/prayag.world` |
+| **Harmonic**    |  `gz sim prayag/prayag.world` |
 
 
 ## Important Disclaimer
