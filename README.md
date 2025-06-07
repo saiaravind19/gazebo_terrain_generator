@@ -2,9 +2,9 @@
 
 A super easy to use GUI for downloading map tiles and generating 3d gazebo terrain.
 
-<p align="center">
-  <img src="gif/map-tiles-downloader.gif">
-</p>
+[![Project Demo](https://img.youtube.com/vi/pxL2UF9xl_w/0.jpg)](https://www.youtube.com/watch?v=pxL2UF9xl_w)
+
+
 
 ### Run Maptile downloader via command line
 1. Navigate to `maptilesdownloader` directory.
