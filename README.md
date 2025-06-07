@@ -58,24 +58,20 @@ pip install -r requirements.txt
 
 
 ### 4. Spawning the gazebo world
-1. Export gazebo resource path based on your gazebo version
+1. Export gazebo resource path based on your gazebo version. Use the table below as reference.
 
-#### Gazebo Resource Path Support
-| Gazebo Version |  Resource Path Variable(s)| Support|
-|----------------|---------------------------|--------|
-| **Ignition** (Citadel, Edifice, Fortress)| `export IGN_GAZEBO_RESOURCE_PATH=$IGN_GAZEBO_RESOURCE_PATH:~/"<your model directory path>"` |✅ |
-| **Garden**      | `export IGN_GAZEBO_RESOURCE_PATH=$IGN_GAZEBO_RESOURCE_PATH:~/"<your model directory path>"`|✅ | 
-| **Harmonic**    | `export GZ_SIM_RESOURCE_PATH=$GZ_SIM_RESOURCE_PATH:~/"<your path here>"` |✅ |
+| Gazebo Version |  Resource Path Variable(s)|
+|----------------|---------------------------|
+| **Ignition** and later | `export IGN_GAZEBO_RESOURCE_PATH=$IGN_GAZEBO_RESOURCE_PATH:~/<your model directory path>` |
+| **Harmonic**    | `export GZ_SIM_RESOURCE_PATH=$GZ_SIM_RESOURCE_PATH:~/<your model path here>` |
 
-2. Run the gazebo with required world.
+2. Run Gazebo with the required world file.
 
-  ```bash
-    ign gazbeo <path of your  world file>
-  ```
+| Gazebo Version |  Resource Path Variable(s)|
+|----------------|---------------------------|
+| **Ignition** and later | `ign gazbeo "<path of your  world file>` |
+| **Harmonic**    |  `gz sim <path of your  world file file>` |
 
-  ```bash
-    gz sim <path of your  world file file>
-  ```
 **Note:** Replace path with your actual path of the .world.
 
 
