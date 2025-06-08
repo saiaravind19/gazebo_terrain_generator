@@ -54,8 +54,7 @@ pip install -r requirements.txt
    ```
 
 2. To access application open up your web browser and navigate to `http://localhost:8080`.
-3. The output map tiles will be in the `output\{timestamp}\` directory by default chnage it as per choice.
-
+3. Gazebo world generated are stored inside `output/gazebo_terrian/` by default. Feel free to change the path defined in `scripts/utils/param.py` as per you choice.
 
 ### 4. Spawning the gazebo world
 1. Export gazebo resource path based on your gazebo version. Use the table below as reference.
