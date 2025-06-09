@@ -100,4 +100,4 @@ Downloading map tiles is subject to the terms and conditions of the tile provide
 
 ## License
 
-This project uses work of[Ali Ashraf]([http://aliashraf.net](https://github.com/AliFlux/MapTilesDownloader)).
+This project uses work of [Ali Ashraf](https://github.com/AliFlux/MapTilesDownloader).
