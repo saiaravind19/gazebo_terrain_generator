@@ -77,10 +77,10 @@ def download_tile():
 		"quad": quad,
 		"timestamp": str(timestamp),
 	}
-
 	for key, value in replaceMap.items():
 		outputDirectory = outputDirectory.replace(f"{{{key}}}", value)
 		outputFile = outputFile.replace(f"{{{key}}}", value)
+	print(outputDirectory)
 
 	filePath = os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory, outputFile)
 
@@ -90,7 +90,7 @@ def download_tile():
 		result["message"] = 'Tile already exists'
 	else:
 		tempFile = random_string() + ".jpg"
-		tempFilePath = os.path.join("temp", tempFile)
+		tempFilePath = os.path.join(globalParam.TEMP_PATH, tempFile)
 		result["code"] = Utils.downloadFileScaled(source, tempFilePath, x, y, z, outputScale)
 
 		if os.path.isfile(tempFilePath):
