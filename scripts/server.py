@@ -80,7 +80,6 @@ def download_tile():
 	for key, value in replaceMap.items():
 		outputDirectory = outputDirectory.replace(f"{{{key}}}", value)
 		outputFile = outputFile.replace(f"{{{key}}}", value)
-	print(outputDirectory)
 
 	filePath = os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory, outputFile)
 

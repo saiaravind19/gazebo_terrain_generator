@@ -2,7 +2,9 @@
 <sdf version="1.6">
     <model name="$MODEL$">
       <static>true</static>
-      <link name="link">
+      <pose>0 0 $POSZ$ 0 0 0</pose>
+
+      <link name="ground">
         <collision name="collision">
           <geometry>
             <heightmap>
@@ -12,7 +14,7 @@
             </heightmap>
           </geometry>
         </collision>
-        <visual name="visual_abcedf">
+        <visual name="ground_visual">
           <geometry>
             <heightmap>
               <use_terrain_paging>false</use_terrain_paging>
@@ -21,17 +23,11 @@
                 <normal>model://$MODELNAME$/textures/$AERIALMAP$</normal>
                 <size>$SIZEX$ $SIZEY$ $SIZEZ$</size>
               </texture>
-             <blend>
-                <min_height>2</min_height>
-                <fade_dist>5</fade_dist>
-              </blend>
-              <blend>
-                <min_height>4</min_height>
-                <fade_dist>5</fade_dist>
-              </blend>
               <uri>model://$MODELNAME$/textures/$HEIGHTMAP$</uri>
               <size>$SIZEX$ $SIZEY$ $SIZEZ$</size>
               <pos>0 0 $POSZ$</pos>
+              <sampling>2</sampling>
+
             </heightmap>
           </geometry>
         </visual>

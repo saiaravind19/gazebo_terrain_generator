@@ -208,7 +208,7 @@ class FileWriter:
 
 		'''
 		
-		heightmap = model_name+'_height_map.png'
+		heightmap = model_name+'_height_map.tif'
 		aerialimg = model_name+'_aerial.png'
     	# Filling in content
 		sdf_template = sdf_template.replace("$MODEL$", str(model_name))
@@ -256,7 +256,7 @@ class FileWriter:
     	# Ensure results are a string
 		sdf_content = str(sdf_template)
     	# Open file
-		target = open(os.path.join(path,model_name+".world"), "w")
+		target = open(os.path.join(path,model_name+".sdf"), "w")
 
     	# Write to model.sdf
 		target.write(sdf_content)

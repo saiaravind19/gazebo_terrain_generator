@@ -11,6 +11,7 @@ from geopy.distance import distance
 from geopy.point import Point
 from multiprocessing import Pool, cpu_count
 
+from PIL import Image
 
 
     
@@ -45,14 +46,15 @@ class orthoGenerator:
         # Reshape the array to a 2D image
         image = normalized_array.reshape((resolution, resolution))
 
-
         resized_image = cv2.resize(image, (1025, 1025), interpolation=cv2.INTER_LINEAR)
         blur = cv2.GaussianBlur(resized_image, (1, 1), 0)
 
         flipped_img = cv2.flip(blur, 0)
-        model =os.path.basename(self.metadata_path)
-       # Save the height map image
-        cv2.imwrite(os.path.join(globalParam.GAZEBO_WORLD_PATH, model, 'textures', model+'_height_map.png'), flipped_img)
+        model = os.path.basename(self.metadata_path)
+        
+        # Convert OpenCV image to PIL Image and save as TIFF
+        pil_image = Image.fromarray(flipped_img, mode='L')  # 'L' for 8-bit grayscale
+        pil_image.save(os.path.join(globalParam.GAZEBO_WORLD_PATH, model, 'textures', model+'_height_map.tif'), format="TIFF")
 
     def get_origin_height(self)-> float:
         """

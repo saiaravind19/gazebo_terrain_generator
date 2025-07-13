@@ -1,40 +1,37 @@
 <?xml version="1.0" ?>
-<sdf version="1.6">
-    <model name="prayag">
-      <static>true</static>
-      <link name="link">
-        <collision name="collision">
-          <geometry>
+<sdf version="1.9">
+  <model name="prayag">
+    <static>true</static>
+    <pose>0 0 -35 0 0 0</pose>
+
+    <link name="ground">
+      <collision name="collision">
+        <geometry>
             <heightmap>
-              <uri>model://prayag/textures/prayag_height_map.png</uri>
-              <size>2246 2234 461.60000000000036</size>
-              <pos>0 0 -23</pos>
+              <uri>model://prayag/textures/prayag_height_map.tif</uri>
+                <size>2246 2234 461.60</size>
+              <pose>0 0 -35</pose>
             </heightmap>
-          </geometry>
-        </collision>
-        <visual name="visual_abcedf">
-          <geometry>
+        </geometry>
+      </collision>
+      <visual name="ground_visual">
+        <geometry>
             <heightmap>
               <use_terrain_paging>false</use_terrain_paging>
               <texture>
                 <diffuse>model://prayag/textures/prayag_aerial.png</diffuse>
                 <normal>model://prayag/textures/prayag_aerial.png</normal>
-                <size>2246 2234 461.60000000000036</size>
+                <size>2246 2234 461.60</size>
               </texture>
-             <blend>
-                <min_height>2</min_height>
-                <fade_dist>5</fade_dist>
-              </blend>
-              <blend>
-                <min_height>4</min_height>
-                <fade_dist>5</fade_dist>
-              </blend>
-              <uri>model://prayag/textures/prayag_height_map.png</uri>
-              <size>2246 2234 461.60000000000036</size>
-              <pos>0 0 -23</pos>
+              <uri>model://prayag/textures/prayag_height_map.tif</uri>
+              <size>2246 2234 461.60</size>
+              <pos>0 0 -35</pos>
+              <sampling>2</sampling>
             </heightmap>
-          </geometry>
-        </visual>
-      </link>
-    </model>
+        </geometry>
+      </visual>
+
+    </link>
+  </model>
+
 </sdf>
