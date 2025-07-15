@@ -200,7 +200,14 @@ class OrthoGenerator:
             cv2.imwrite(output_file, cv2.vconcat(images))
 
     @staticmethod
-    def _run_instance_method(args):
+    def _run_instance_method(args : tuple) -> None:
+        """
+        Run an instance method with the provided arguments.
+        Args:
+            args (tuple): A tuple containing the instance and its method arguments.
+        Returns:
+            None
+        """
         instance, dir_name, image_dir, tile_boundaries, temp_output_dir = args
         instance.process_column_image(dir_name, image_dir, tile_boundaries, temp_output_dir)
     
@@ -233,8 +240,8 @@ class OrthoGenerator:
         image_dir = os.path.join(path, str(zoomlevel))
         
         # Check and create necessary directories
-        maptile_utiles.dir_check(os.path.join(globalParam.GAZEBO_WORLD_PATH, model_name, 'textures'))
-        maptile_utiles.dir_check(os.path.join(globalParam.TEMPORARY_SATELLITE_IMAGE, model_name))
+        maptile_utiles.dir_check(os.path.join(globalParam.GAZEBO_WORLD_PATH, model_name, 'textures'),remove_existing=True)
+        maptile_utiles.dir_check(os.path.join(globalParam.TEMPORARY_SATELLITE_IMAGE, model_name),remove_existing=True)
         bound_array = boundaries.split(',')
         tile_boundaries = maptile_utiles.get_max_tilenumber(bound_array,zoomlevel)
         image_dir_list = self.get_x_tile_directories(image_dir,tile_boundaries)
@@ -350,8 +357,6 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
         Returns:
             None
         """
-
-        
         template = FileWriter.read_template(os.path.join(globalParam.TEMPLATE_DIR_PATH ,'config_temp.txt'))
         FileWriter.write_config_file(template, self.model_name, os.path.join(globalParam.GAZEBO_WORLD_PATH, self.model_name))
     
