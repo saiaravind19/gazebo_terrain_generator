@@ -4,6 +4,7 @@ import cv2
 import os
 from utils.maptile_utils import maptile_utiles
 from multiprocessing import Pool, cpu_count
+from utils.param import globalParam
 
 def fetch_image_from_url(url):
     try:
@@ -17,11 +18,13 @@ def fetch_image_from_url(url):
         print(f"Failed to download or decode image from {url}: {e}")
         return None
 
+# Use the URL and api key defined in global param
+
 def download_tile_image(args):
     zoom, x, y, output_dir = args
     tile_url = (
         f"https://api.mapbox.com/raster/v1/mapbox.mapbox-terrain-dem-v1/"
-        f"{zoom}/{x}/{y}.webp?sku=101CUGorpzzyK&access_token=pk.eyJ1IjoicHJhdmlubWFsaTg1NCIsImEiOiJjbDM4Y2ZpaDIwMDdkM2JxbGM0ZWtkamxxIn0.VStYkAceQjhkW8StZekEvg"
+        f"{zoom}/{x}/{y}.webp?sku=101CUGorpzzyK&access_token={globalParam.MAPBOX_API_KEY}"
     )
     img = fetch_image_from_url(tile_url)
     if img is not None:

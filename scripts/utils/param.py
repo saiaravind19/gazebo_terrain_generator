@@ -12,8 +12,7 @@ class globalParam:
 
     DEM_PATH                    = os.path.join(OUTPUT_BASE_PATH, 'dem')
 
-
     # Set the global config
     TEMPORARY_SATELLITE_IMAGE    = os.path.join(TEMP_PATH,'gazebo_terrian')
-    TEMPLATE_DIR_PATH            =  str(Path(__file__).resolve().parents[2] / 'templates')
-
+    TEMPLATE_DIR_PATH            = str(Path(__file__).resolve().parents[2] / 'templates')
+    MAPBOX_API_KEY               = "Add your Mapbox API Key Here"  
