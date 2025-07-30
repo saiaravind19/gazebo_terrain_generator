@@ -196,11 +196,13 @@ class HeightmapGenerator(ConcatImage):
         cropped_image = self.crop_dem_image(crop_px_cord,stitched_image) 
         height,width = cropped_image.shape[:2]
 
-
-        height_map = np.ones((height,width,1))
-        height_map = ((cropped_image[:, :, 2] * 256 * 256 + cropped_image[:, :, 1] * 256 + cropped_image[:, :, 0]) * 0.1) - 10000
+        # Convert to float to avoid overflow during calculation
+        cropped_image_float = cropped_image.astype(np.float32)
+        # Calculate height map - changed to use float operations
+        height_map = ((cropped_image_float[:, :, 2] * 256 * 256 + cropped_image_float[:, :, 1] * 256 + cropped_image_float[:, :, 0]) * 0.1) - 10000
         self.max_height = np.max(height_map)
         self.min_height = np.min(height_map)
+
         height_img_normalized = ((height_map - np.min(height_map)) / (np.max(height_map) - np.min(height_map)) * 255).astype(np.uint8)
 
         def get_nearest_map_size(height,width):
