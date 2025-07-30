@@ -9,6 +9,7 @@ class globalParam:
     GAZEBO_WORLD_PATH           = os.path.join(OUTPUT_BASE_PATH,'gazebo_terrian')  
     DEM_RESOLUTION              = 13
 
+
     DEM_PATH                    = os.path.join(OUTPUT_BASE_PATH, 'dem')
 
     # Set the global config

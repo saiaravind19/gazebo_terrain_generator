@@ -89,6 +89,7 @@ class HeightmapGenerator(ConcatImage):
     def __init__(self,**kwargs):
         super().__init__(**kwargs)
         self.heightmap = None
+        self.max_height = self.min_height = 0
         self.size_x=self.size_y=self.size_z=0
 
 
@@ -198,6 +199,8 @@ class HeightmapGenerator(ConcatImage):
 
         height_map = np.ones((height,width,1))
         height_map = ((cropped_image[:, :, 2] * 256 * 256 + cropped_image[:, :, 1] * 256 + cropped_image[:, :, 0]) * 0.1) - 10000
+        self.max_height = np.max(height_map)
+        self.min_height = np.min(height_map)
         height_img_normalized = ((height_map - np.min(height_map)) / (np.max(height_map) - np.min(height_map)) * 255).astype(np.uint8)
 
         def get_nearest_map_size(height,width):
@@ -402,7 +405,7 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
         self.size_x = int(geodesic(sw, se).m)
         self.size_y = int(geodesic(se, ne).m)
 
-        self.size_z = np.max(self.heightmap) - np.min(self.heightmap)
+        self.size_z = self.max_height - self.min_height
 
         center_x, center_y = (self.heightmap.size[0] // 2, self.heightmap.size[1] // 2)
         origin_height = self.heightmap.getpixel((center_x, center_y))*self.size_z/255
