@@ -59,7 +59,7 @@ def download_tile_image(args : tuple)-> None:
     else:
         print(f"[WARN] Skipped tile ({x}, {y}) due to download error.")
 
-def download_dem_data(bound_array, output_directory, zoom_range: tuple = (10, 11)) -> None:
+def download_dem_data(bound_array, output_directory, zoom_range: tuple = (13, 13)) -> None:
     """
     Download DEM data for a specified bounding box and zoom range.
     Args:
