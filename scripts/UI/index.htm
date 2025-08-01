@@ -28,6 +28,7 @@
 	<script src="main.js"></script>
 	<link href='fonts/fonts.css' rel='stylesheet' type='text/css' />
 	<link href='style.css' rel='stylesheet' type='text/css' />
+	<link rel="stylesheet" href="css/centerPoint.css">
 </head>
 <body>
 
@@ -180,5 +181,19 @@
 
 	</div>
 
+	<script src="js/centerPoint.js"></script>
+    <script>
+        // Initialize center point after map is loaded
+        map.on('load', function() {
+            initializeCenterPoint(map);
+        });
+    </script>
+
+    <link href='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.2.2/mapbox-gl-draw.css' rel='stylesheet' />
+    <style>
+        .mapboxgl-marker {
+            cursor: move;
+        }
+    </style>
 </body>
 </html>

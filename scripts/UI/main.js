@@ -124,6 +124,40 @@ $(function() {
 
 		map.on('draw.create', function (e) {
 			M.Toast.dismissAll();
+			if (e.features[0].geometry.type === 'Polygon') {
+				var coordinates = e.features[0].geometry.coordinates[0];
+				var bounds = coordinates.reduce(function(bounds, coord) {
+					return [
+						Math.min(bounds[0], coord[0]), // west
+						Math.min(bounds[1], coord[1]), // south
+						Math.max(bounds[2], coord[0]), // east
+						Math.max(bounds[3], coord[1])  // north
+					];
+				}, [Infinity, Infinity, -Infinity, -Infinity]);
+				window.launchBounds = bounds;
+				var center = [
+					(bounds[0] + bounds[2]) / 2,
+					(bounds[1] + bounds[3]) / 2
+				];
+				window.launchLocation = center;
+				if (window.centerMarker) {
+					window.centerMarker.remove();
+				}
+				window.centerMarker = new mapboxgl.Marker({
+					draggable: true,
+					color: '#FF0000'
+				})
+				.setLngLat(center)
+				.addTo(map);
+				window.centerMarker.on('dragend', function() {
+					var lngLat = window.centerMarker.getLngLat();
+					var bounds = window.launchBounds;
+					var newLng = Math.min(Math.max(lngLat.lng, bounds[0]), bounds[2]);
+					var newLat = Math.min(Math.max(lngLat.lat, bounds[1]), bounds[3]);
+					window.centerMarker.setLngLat([newLng, newLat]);
+					window.launchLocation = [newLng, newLat];
+				});
+			}
 		});
 
 		$("#rectangle-draw-button").click(function() {
@@ -136,6 +170,12 @@ $(function() {
 		removeGrid();
 		draw.deleteAll();
 		draw.changeMode('draw_rectangle');
+
+		// Remove center marker if it exists
+		if (window.centerMarker) {
+			window.centerMarker.remove();
+			window.centerMarker = null;
+		}
 
 		M.Toast.dismissAll();
 		M.toast({html: 'Click two points on the map to make a rectangle.', displayLength: 7000})
@@ -484,20 +524,21 @@ $(function() {
 
 		var bounds = getBounds();
 		var area_rect = area();
-		var boundsArray = [[bounds.getSouthWest().lng,bounds.getSouthWest().lat],[bounds.getNorthEast().lng,bounds.getNorthEast().lat]]
-		var centerArray = [bounds.getCenter().lng,bounds.getCenter().lat]
-		
+		var boundsArray = [[bounds.getSouthWest().lng,bounds.getSouthWest().lat],[bounds.getNorthEast().lng,bounds.getNorthEast().lat]];
+		var centerArray = [bounds.getCenter().lng,bounds.getCenter().lat];
+		var launchLocation = window.launchLocation ? window.launchLocation : centerArray;
 		var data = new FormData();
-		data.append('maxZoom', getMaxZoom())
-		data.append('outputDirectory', outputDirectory)
-		data.append('outputFile', outputFile)
-		data.append('outputType', outputType)
-		data.append('outputScale', outputScale)
-		data.append('source', source)
-		data.append('timestamp', timestamp)
-		data.append('bounds', boundsArray.join(","))
-		data.append('center', centerArray.join(","))
-		data.append('area',area_rect)
+		data.append('maxZoom', getMaxZoom());
+		data.append('outputDirectory', outputDirectory);
+		data.append('outputFile', outputFile);
+		data.append('outputType', outputType);
+		data.append('outputScale', outputScale);
+		data.append('source', source);
+		data.append('timestamp', timestamp);
+		data.append('bounds', boundsArray.join(","));
+		data.append('center', centerArray.join(","));
+		data.append('launchLocation', launchLocation.join(","));
+		data.append('area', area_rect);
 
 		var request = await $.ajax({
 			url: "/start-download",
@@ -534,7 +575,8 @@ $(function() {
 			data.append('source', source)
 			data.append('bounds', boundsArray.join(","))
 			data.append('center', centerArray.join(","))
-			data.append('area',area_rect)
+			data.append('launchLocation', launchLocation.join(","))
+			data.append('area', area_rect)
 
 			var request = $.ajax({
 				"url": url,
@@ -644,6 +686,12 @@ $(function() {
 			} catch(e) {
 
 			}
+		}
+
+		// Remove center marker if it exists
+		if (window.centerMarker) {
+			window.centerMarker.remove();
+			window.centerMarker = null;
 		}
 
 		$("#main-sidebar").show();
