@@ -755,7 +755,6 @@ $(function() {
 			updateProgress(allTiles.length, allTiles.length);
 			logItemRaw("Starting World Generation");
 			pollTaskStatus(); // Start polling with the task ID
-			$("#stop-button").html("FINISH");
 
 		},
 
