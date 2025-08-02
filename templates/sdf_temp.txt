@@ -2,7 +2,7 @@
 <sdf version="1.6">
     <model name="$MODEL$">
       <static>true</static>
-      <pose>0 0 $POSZ$ 0 0 0</pose>
+      <pose>$POSX$ $POSY$ $POSZ$ 0 0 0</pose>
 
       <link name="ground">
         <collision name="collision">
@@ -10,7 +10,7 @@
             <heightmap>
               <uri>model://$MODELNAME$/textures/$HEIGHTMAP$</uri>
               <size>$SIZEX$ $SIZEY$ $SIZEZ$</size>
-              <pos>0 0 $POSZ$</pos>
+              <pos>$POSX$ $POSY$  $POSZ$</pos>
             </heightmap>
           </geometry>
         </collision>
@@ -25,7 +25,7 @@
               </texture>
               <uri>model://$MODELNAME$/textures/$HEIGHTMAP$</uri>
               <size>$SIZEX$ $SIZEY$ $SIZEZ$</size>
-              <pos>0 0 $POSZ$</pos>
+              <pos>$POSX$ $POSY$ $POSZ$</pos>
               <sampling>2</sampling>
 
             </heightmap>

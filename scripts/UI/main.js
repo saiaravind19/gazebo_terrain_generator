@@ -135,17 +135,10 @@ $(function() {
 					];
 				}, [Infinity, Infinity, -Infinity, -Infinity]);
 
-				// Store the original center for origin display
-				var originalCenter = [
-					(originalBounds[0] + originalBounds[2]) / 2,
-					(originalBounds[1] + originalBounds[3]) / 2
-				];
-
 				// Get current zoom level for tile calculations
 				var zoomLevel = getMaxZoom();
 				
 				// Convert bounds to corners following Python logic
-				// bound_array format: [west, south, east, north]
 				var boundArray = originalBounds;
 				
 				// Create corner coordinates (lat, lon) as in Python
@@ -165,8 +158,8 @@ $(function() {
 				var se_tile_y = lat2tile(se[0], zoomLevel);
 				
 				// Calculate height and width in tiles (following Python logic)
-				var height = Math.abs(nw_tile_x - ne_tile_x);
-				var width = Math.abs(sw_tile_y - nw_tile_y);
+				var height = Math.abs(sw_tile_y - nw_tile_y);
+				var width = Math.abs(ne_tile_x - nw_tile_x);
 				
 				console.log("Original bounds:", originalBounds);
 				console.log("Tile coordinates:", {
@@ -175,6 +168,7 @@ $(function() {
 					ne: [ne_tile_x, ne_tile_y],
 					se: [se_tile_x, se_tile_y]
 				});
+				console.log("Calculated dimensions - width:", width, "height:", height);
 				
 				var tileBounds;
 				if (height !== width) {
@@ -182,46 +176,45 @@ $(function() {
 					var squareSize = Math.min(height, width);
 					console.log("Making square with size:", squareSize);
 					
-					// Fix: Use the correct logic for creating square bounds
 					// Start from northwest corner and extend square size
 					tileBounds = {
-						"southwest": [nw_tile_x, nw_tile_y + squareSize],
-						"southeast": [nw_tile_x + squareSize, nw_tile_y + squareSize], 
 						"northwest": [nw_tile_x, nw_tile_y],
-						"northeast": [nw_tile_x + squareSize, nw_tile_y]
+						"northeast": [nw_tile_x + squareSize, nw_tile_y],
+						"southwest": [nw_tile_x, nw_tile_y + squareSize],
+						"southeast": [nw_tile_x + squareSize, nw_tile_y + squareSize]
 					};
 				} else {
 					tileBounds = {
-						"southwest": [sw_tile_x, sw_tile_y],
-						"southeast": [se_tile_x, se_tile_y],
 						"northwest": [nw_tile_x, nw_tile_y],
-						"northeast": [ne_tile_x, ne_tile_y]
+						"northeast": [ne_tile_x, ne_tile_y],
+						"southwest": [sw_tile_x, sw_tile_y],
+						"southeast": [se_tile_x, se_tile_y]
 					};
 				}
 				
 				console.log("Final tile bounds:", tileBounds);
 				
-				// Convert tile bounds back to geographic coordinates
-				var true_sw = [tile2lat(tileBounds.southwest[1] + 1, zoomLevel), tile2long(tileBounds.southwest[0], zoomLevel)]; // (south, west)
-				var true_se = [tile2lat(tileBounds.southeast[1], zoomLevel), tile2long(tileBounds.southeast[0] + 1, zoomLevel)]; // (south, east)
+				// Convert tile bounds back to geographic coordinates with consistent logic
 				var true_nw = [tile2lat(tileBounds.northwest[1], zoomLevel), tile2long(tileBounds.northwest[0], zoomLevel)]; // (north, west)
-				var true_ne = [tile2lat(tileBounds.northeast[1], zoomLevel), tile2long(tileBounds.northeast[0] + 1, zoomLevel)]; // (north, east)
+				var true_ne = [tile2lat(tileBounds.northeast[1], zoomLevel), tile2long(tileBounds.northeast[0], zoomLevel)]; // (north, east)
+				var true_sw = [tile2lat(tileBounds.southwest[1], zoomLevel), tile2long(tileBounds.southwest[0], zoomLevel)]; // (south, west)
+				var true_se = [tile2lat(tileBounds.southeast[1], zoomLevel), tile2long(tileBounds.southeast[0], zoomLevel)]; // (south, east)
 				
-				// Create the snapped bounds array [west, south, east, north]
+				// Create the snapped bounds array [west, south, east, north] - ensure perfect rectangle
 				var snappedBounds = [
-					Math.min(true_sw[1], true_nw[1]), // west
-					Math.min(true_sw[0], true_se[0]), // south
-					Math.max(true_se[1], true_ne[1]), // east
-					Math.max(true_nw[0], true_ne[0])  // north
+					Math.min(true_nw[1], true_sw[1]), // west (minimum longitude)
+					Math.min(true_sw[0], true_se[0]), // south (minimum latitude)
+					Math.max(true_ne[1], true_se[1]), // east (maximum longitude)
+					Math.max(true_nw[0], true_ne[0])  // north (maximum latitude)
 				];
 				
-				// Create snapped coordinates for the polygon
+				// Create perfectly rectangular coordinates for the polygon
 				var snappedCoordinates = [[
-					[snappedBounds[0], snappedBounds[1]], // SW
-					[snappedBounds[2], snappedBounds[1]], // SE
-					[snappedBounds[2], snappedBounds[3]], // NE
-					[snappedBounds[0], snappedBounds[3]], // NW
-					[snappedBounds[0], snappedBounds[1]]  // SW (close polygon)
+					[snappedBounds[0], snappedBounds[1]], // SW: [west, south]
+					[snappedBounds[2], snappedBounds[1]], // SE: [east, south]
+					[snappedBounds[2], snappedBounds[3]], // NE: [east, north]
+					[snappedBounds[0], snappedBounds[3]], // NW: [west, north]
+					[snappedBounds[0], snappedBounds[1]]  // SW: close polygon
 				]];
 				
 				// Use a timeout to ensure the feature is fully created before updating
@@ -652,11 +645,11 @@ $(function() {
 		var allTiles = getAllGridTiles();
 		updateProgress(0, allTiles.length);
 
-		var numThreads = parseInt($("#parallel-threads-box").val());
+		var numThreads = parseInt($("#parallel-threads-box").val()) || 4;
 		var outputDirectory = $("#output-directory-box").val();
-		var outputFile = $("#output-file-box").val();
-		var outputType = $("#output-type").val();
-		var outputScale = $("#output-scale").val();
+		var outputFile = "{z}/{x}/{y}.png"; 
+		var outputType = "png"; 
+		var outputScale = "1"; 
 		var source = $("#source-box").val()
 
 		var bounds = getBounds();
