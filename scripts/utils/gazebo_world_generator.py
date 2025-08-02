@@ -168,7 +168,6 @@ class HeightmapGenerator(ConcatImage):
             (self, dir_name, image_dir, tile_number_boundaries, temp_output_dir)
             for dir_name in image_dir_list
         ]
-        print(args_list)
         #  Multiprocessing call
         with Pool(processes=cpu_count()) as pool:
             pool.map(OrthoGenerator._run_instance_method, args_list)
@@ -227,7 +226,6 @@ class HeightmapGenerator(ConcatImage):
 
 
     def crop_dem_image(self,px_bound,height_map):
-        print(px_bound)
         cropped_image = height_map[px_bound["northwest"][1]:px_bound["southeast"][1], 
                                        px_bound["southwest"][0]:px_bound["northeast"][0]]
         return cropped_image
@@ -353,16 +351,18 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
             "altitude": self.get_amsl(float(location_array[1]), float(location_array[0]))
             }
 
-    def gen_sdf(self, size_x :int, size_y :int, size_z :int, pose_x :int, pose_y :int, pose_z :int) -> None:
+    def gen_sdf(self, size_x: float, size_y: float, size_z: float, pose_x: float, pose_y: float, pose_z: float) -> None:
         """
         Generate the SDF file for the world.
 
         Args:
             metadata_path (str): Path to metadata.
-            size_x (int): Size in x-direction.
-            size_y (int): Size in y-direction.
-            size_z (int): Size in z-direction.
-            pose_z (int): Pose in z-direction.
+            size_x (float): Size in x-direction.
+            size_y (float): Size in y-direction.
+            size_z (float): Size in z-direction.
+            pose_x (float): Pose in x-direction.
+            pose_y (float): Pose in y-direction.
+            pose_z (float): Pose in z-direction.
 
         Returns:
             None
@@ -445,8 +445,8 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
         pose_x = geodesic(origin_point, coord_point_x).meters
         
         # Apply correct sign based on longitude difference
-        if coord["longitude"] < origin["longitude"]:
-            pose_x = -pose_x  # West is negative
+        if coord["longitude"] > origin["longitude"]:
+            pose_x = -pose_x 
             
         # Calculate Y offset (North-South distance)  
         # Use the same longitude but different latitude
@@ -454,11 +454,10 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
         pose_y = geodesic(origin_point, coord_point_y).meters
         
         # Apply correct sign based on latitude difference
-        if coord["latitude"] < origin["latitude"]:
-            pose_y = -pose_y  # South is negative
+        if coord["latitude"] > origin["latitude"]:
+            pose_y = -pose_y  
             
-        return int(pose_x), int(pose_y)
-
+        return round(pose_x, 2), round(pose_y, 2)  
 
     def get_world_dimensions(self):
         """ 
@@ -479,9 +478,9 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
         se = true_boundaries["southeast"]
         ne = true_boundaries["northeast"]
 
-        self.size_x = int(geodesic(sw, se).m)
-        self.size_y = int(geodesic(se, ne).m)
-        self.size_z = self.max_height - self.min_height
+        self.size_x = round(geodesic(sw, se).m, 2)  
+        self.size_y = round(geodesic(se, ne).m, 2)  
+        self.size_z = round(self.max_height - self.min_height,2)
         origin_coord = self.get_true_origin()
         launch_location = self.get_launch_location()
         pose_x,pose_y = self.get_offset(origin_coord,launch_location)
@@ -495,7 +494,7 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
 
         # Calculate launch height and pose offset
         launch_height = self.heightmap.getpixel((launch_px, launch_py)) * self.size_z / 255
-        pose_z = int(-1 * (launch_height + 0.03 * launch_height))
+        pose_z = round(-1 * (launch_height + 0.03 * launch_height), 2)  
 
         return self.size_x,self.size_y,self.size_z,pose_x,pose_y,pose_z
 
