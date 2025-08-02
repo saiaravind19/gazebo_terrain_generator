@@ -242,37 +242,19 @@ $(function() {
 				];
 				window.launchLocation = center;
 
-				// Remove existing markers if they exist
-				if (window.centerMarker) {
-					window.centerMarker.remove();
-				}
+				// Store the selected region for later restoration
+				window.selectedRegion = {
+					type: 'Feature',
+					geometry: {
+						type: 'Polygon',
+						coordinates: snappedCoordinates
+					},
+					properties: e.features[0].properties
+				};
 
-				// Add a helipad icon at the center
-				var helipadIcon = document.createElement('div');
-				helipadIcon.className = 'helipad-icon';
-				helipadIcon.style.width = '50px';
-				helipadIcon.style.height = '50px';
-				helipadIcon.style.backgroundImage = 'url(launchpad.svg)';
-				helipadIcon.style.backgroundSize = 'contain';
-				helipadIcon.style.backgroundRepeat = 'no-repeat';
-				helipadIcon.style.backgroundPosition = 'center';
-
-				window.centerMarker = new mapboxgl.Marker({
-					element: helipadIcon,
-					draggable: true
-				})
-				.setLngLat(center)
-				.addTo(map);
-
-				// Constrain the helipad icon within the bounds
-				window.centerMarker.on('dragend', function() {
-					var lngLat = window.centerMarker.getLngLat();
-					var bounds = window.launchBounds;
-					var newLng = Math.min(Math.max(lngLat.lng, bounds[0]), bounds[2]);
-					var newLat = Math.min(Math.max(lngLat.lat, bounds[1]), bounds[3]);
-					window.centerMarker.setLngLat([newLng, newLat]);
-					window.launchLocation = [newLng, newLat];
-				});
+				// Remove existing markers if they exist and create new one
+				removeLaunchPadMarker();
+				createLaunchPadMarker();
 
 				// Calculate and show square dimensions
 				var squareTileWidth = Math.abs(tileBounds.northeast[0] - tileBounds.northwest[0]);
@@ -302,10 +284,7 @@ $(function() {
 		draw.changeMode('draw_rectangle');
 
 		// Remove markers if they exist
-		if (window.centerMarker) {
-			window.centerMarker.remove();
-			window.centerMarker = null;
-		}
+		removeLaunchPadMarker();
 
 		M.Toast.dismissAll();
 		M.toast({html: 'Click two points on the map to draw a region', displayLength: 3000})
@@ -608,6 +587,9 @@ $(function() {
 				if (status === "completed") {
 					logItemRaw("Gazebo world generated successfully.");
 					$("#stop-button").html("FINISH");
+					
+					// Add the launch pad marker when generation is complete
+					createLaunchPadMarker();
 				} else if (status === "in_progress") {
 					logItemRaw("World Generation Inprogress..");
 					setTimeout(() => pollTaskStatus(), 5000); // Poll every 5 seconds
@@ -639,6 +621,9 @@ $(function() {
 		removeGrid();
 		clearLogs();
 		M.Toast.dismissAll();
+
+		// Remove the launch pad marker when download starts
+		removeLaunchPadMarker();
 
 		var timestamp = Date.now().toString();
 
@@ -774,7 +759,7 @@ $(function() {
 
 		},
 
-	
+
 	);
 
 
@@ -807,6 +792,33 @@ $(function() {
 	}
 
 	function stopDownloading() {
+		// Check if the process is finished (button shows "FINISH")
+		if ($("#stop-button").html() === "FINISH") {
+			// Process is complete, restore the main view
+			$("#main-sidebar").show();
+			$("#download-sidebar").hide();
+			
+			// Ensure the region selection is visible (if it was removed)
+			if (window.selectedRegion && draw.getAll().features.length === 0) {
+				draw.add(window.selectedRegion);
+			}
+			
+			// Ensure the launch pad marker is visible
+			
+			removeGrid();
+			clearLogs();
+			createLaunchPadMarker();
+
+			// Show completion message
+			M.toast({
+				html: 'Region and launch pad are now visible. Ready for next operation.', 
+				displayLength: 3000
+			});
+			
+			return;
+		}
+		
+		// Otherwise, it's a regular stop operation during download
 		cancellationToken = true;
 
 		for(var i =0 ; i < requests.length; i++) {
@@ -818,17 +830,52 @@ $(function() {
 			}
 		}
 
-		// Remove markers if they exist
+
+		$("#main-sidebar").show();
+		$("#download-sidebar").hide();
+
+		removeGrid();
+		clearLogs();
+
+	}
+
+	function createLaunchPadMarker() {
+		// Only create if launch location exists and marker doesn't already exist
+		if (window.launchLocation && !window.centerMarker) {
+			// Add a helipad icon at the center
+			var helipadIcon = document.createElement('div');
+			helipadIcon.className = 'helipad-icon';
+			helipadIcon.style.width = '50px';
+			helipadIcon.style.height = '50px';
+			helipadIcon.style.backgroundImage = 'url(launchpad.svg)';
+			helipadIcon.style.backgroundSize = 'contain';
+			helipadIcon.style.backgroundRepeat = 'no-repeat';
+			helipadIcon.style.backgroundPosition = 'center';
+
+			window.centerMarker = new mapboxgl.Marker({
+				element: helipadIcon,
+				draggable: true
+			})
+			.setLngLat(window.launchLocation)
+			.addTo(map);
+
+			// Constrain the helipad icon within the bounds
+			window.centerMarker.on('dragend', function() {
+				var lngLat = window.centerMarker.getLngLat();
+				var bounds = window.launchBounds;
+				var newLng = Math.min(Math.max(lngLat.lng, bounds[0]), bounds[2]);
+				var newLat = Math.min(Math.max(lngLat.lat, bounds[1]), bounds[3]);
+				window.centerMarker.setLngLat([newLng, newLat]);
+				window.launchLocation = [newLng, newLat];
+			});
+		}
+	}
+
+	function removeLaunchPadMarker() {
 		if (window.centerMarker) {
 			window.centerMarker.remove();
 			window.centerMarker = null;
 		}
-
-		$("#main-sidebar").show();
-		$("#download-sidebar").hide();
-		removeGrid();
-		clearLogs();
-
 	}
 
 	initializeMaterialize();
