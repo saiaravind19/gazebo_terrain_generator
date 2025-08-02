@@ -80,8 +80,7 @@ def download_tile():
 	timestamp = int(postvars['timestamp'])
 	outputDirectory = str(postvars['outputDirectory'])
 	outputFile = str(postvars['outputFile'])
-	outputType = str(postvars['outputType'])
-	outputScale = int(postvars['outputScale'])
+	outputScale = 1
 	source = str(postvars['source'])
 
 	replaceMap = {
@@ -121,7 +120,7 @@ def download_tile():
 def start_download():
 
 	postvars = request.form
-	outputScale = int(postvars['outputScale'])
+	outputScale = 1
 	outputDirectory = postvars['outputDirectory']
 	outputFile = postvars['outputFile']
 	zoom_level = int(postvars['maxZoom'])

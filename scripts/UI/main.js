@@ -291,9 +291,8 @@ $(function() {
 				
 				// Show success message with details
 				M.toast({
-					html: `✅ Area snapped to ${squareTileWidth}×${squareTileHeight} tile grid (${tilesInSquare} tiles total). Helipad positioned at center.`, 
-					displayLength: 5000,
-					classes: 'green lighten-1'
+					html: `Area snapped to a Square (${tilesInSquare} tiles total)`, 
+					displayLength: 4000
 				});
 			}
 		});
@@ -316,11 +315,7 @@ $(function() {
 		}
 
 		M.Toast.dismissAll();
-		M.toast({
-			html: '🖱️ Click and drag on the map to draw a rectangle. Your selection will be automatically aligned to tile boundaries.', 
-			displayLength: 5000,
-			classes: 'blue lighten-1'
-		});
+		M.toast({html: 'Click two points on the map to draw a region', displayLength: 3000})
 	}
 
 	function initializeGridPreview() {
@@ -514,11 +509,7 @@ $(function() {
 		});
 
 		var totalTiles = getAllGridTiles().length;
-		M.toast({
-			html: '📊 Grid preview active - Total ' + totalTiles.toLocaleString() + ' tiles in the selected region.', 
-			displayLength: 6000,
-			classes: 'orange lighten-1'
-		})
+		M.toast({html: 'Total ' + totalTiles.toLocaleString() + ' tiles in the region.', displayLength: 5000})
 
 	}
 
@@ -641,11 +632,7 @@ $(function() {
 	async function startDownloading() {
 
 		if(draw.getAll().features.length == 0) {
-			M.toast({
-				html: '⚠️ Please select a region first by clicking the "Draw Rectangle" button and drawing on the map.', 
-				displayLength: 4000,
-				classes: 'red lighten-1'
-			});
+			M.toast({html: 'You need to select a region first.', displayLength: 3000})
 			return;
 		}
 
