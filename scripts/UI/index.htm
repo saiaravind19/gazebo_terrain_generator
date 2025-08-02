@@ -28,6 +28,7 @@
 	<script src="main.js"></script>
 	<link href='fonts/fonts.css' rel='stylesheet' type='text/css' />
 	<link href='style.css' rel='stylesheet' type='text/css' />
+	<link rel="stylesheet" href="css/centerPoint.css">
 </head>
 <body>
 
@@ -65,7 +66,7 @@
 
 		<div class='center-align sidebar-section'>
 			<p>
-				<a class="waves-effect waves-light z-depth-0 btn-small orange darken-3" id='rectangle-draw-button'>Draw a rectangle</a>
+				<a class="waves-effect waves-light z-depth-0 btn-small orange darken-3" id='rectangle-draw-button'>Draw Region</a>
 			</p>
 		</div>
 
@@ -107,36 +108,18 @@
 		<div class='step-number'>
 			4
 		</div>
+
 		<div class="step-title">
-			<a href='javascript:void(0)' id='more-options-toggle'>More Options (+)</a>
+			Output Settings
 		</div>
 
-		<div style='display:none;' id='more-options' class='sidebar-section row'>
-
-			<div class="input-field col s12">
-				<select id="output-scale" type="text">
-					<option value="1">1x</option>
-					<option value="2">2x</option>
-				</select>
-				<label for="output-scale">Output scale</label>
-			</div>
+		<div class='sidebar-section'>
 
 			<div class="input-field col s12">
 				<input id="output-directory-box" type="text" value="{timestamp}">
-				<label for="output-directory-box">Output directory</label>
+				<label for="output-directory-box">World name</label>
 			</div>
 
-			<div class="input-field col s12">
-				<select id="output-type" type="text">
-					<option value="directory">Directory</option>
-				</select>
-				<label for="output-type">Output type</label>
-			</div>
-
-			<div class="input-field col s12">
-				<input id="output-file-box" type="text" value="{z}/{x}/{y}.jpg">
-				<label for="output-file-box">Output file</label>
-			</div>
 
 			<div class="input-field col s12">
 				<input id="parallel-threads-box" type="text" value="4">
@@ -144,7 +127,7 @@
 			</div>
 		</div>
 
-		<button class='waves-effect waves-light z-depth-0 btn-large cyan darken-2 bottom-button' id='download-button'>Download</button>
+		<button class='waves-effect waves-light z-depth-0 btn-large cyan darken-2 bottom-button' id='download-button'>Generate Terrian</button>
 
 	</div>
 
@@ -154,7 +137,7 @@
 			5
 		</div>
 		<div class="step-title">
-			Downloading tiles
+			Generating World
 		</div>
 		<div class="hints sidebar-section">
 			Please wait...
@@ -180,5 +163,19 @@
 
 	</div>
 
+	<script src="js/centerPoint.js"></script>
+    <script>
+        // Initialize center point after map is loaded
+        map.on('load', function() {
+            initializeCenterPoint(map);
+        });
+    </script>
+
+    <link href='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.2.2/mapbox-gl-draw.css' rel='stylesheet' />
+    <style>
+        .mapboxgl-marker {
+            cursor: move;
+        }
+    </style>
 </body>
 </html>

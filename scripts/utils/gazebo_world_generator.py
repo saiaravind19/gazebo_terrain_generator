@@ -168,7 +168,6 @@ class HeightmapGenerator(ConcatImage):
             (self, dir_name, image_dir, tile_number_boundaries, temp_output_dir)
             for dir_name in image_dir_list
         ]
-        print(args_list)
         #  Multiprocessing call
         with Pool(processes=cpu_count()) as pool:
             pool.map(OrthoGenerator._run_instance_method, args_list)
@@ -227,7 +226,6 @@ class HeightmapGenerator(ConcatImage):
 
 
     def crop_dem_image(self,px_bound,height_map):
-        print(px_bound)
         cropped_image = height_map[px_bound["northwest"][1]:px_bound["southeast"][1], 
                                        px_bound["southwest"][0]:px_bound["northeast"][0]]
         return cropped_image
@@ -292,7 +290,9 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
         with open(os.path.join(self.tile_path, 'metadata.json')) as f:
             data = json.load(f)
             self.boundaries = data["bounds"]
-            self.zoomlevel = data["zoom_level"]
+            self.launch_location = data["launch_location"]
+
+            self.zoom_level = data["zoom_level"]
         self.model_name = os.path.basename(self.tile_path)
 
 
@@ -323,7 +323,7 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
         """
     
         bound_array = self.boundaries.split(',')
-        boundaries = maptile_utiles.get_true_boundaries(bound_array,self.zoomlevel)
+        boundaries = maptile_utiles.get_true_boundaries(bound_array,self.zoom_level)
 
         sw = boundaries["southwest"]
         se = boundaries["southeast"]
@@ -336,26 +336,40 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
             "altitude": self.get_amsl(origin_lat, origin_lon)
         }
 
+    def get_launch_location(self) -> list:
+        """
+        Get the launch location from the metadata.
 
+        Returns:
+            list: A list containing latitude and longitude of the launch location.
+        """
+        location_array = self.launch_location.split(',')
 
+        return {
+            "latitude": float(location_array[1]),
+            "longitude": float(location_array[0]),
+            "altitude": self.get_amsl(float(location_array[1]), float(location_array[0]))
+            }
 
-    def gen_sdf(self, size_x :int, size_y :int, size_z :int, pose_z :int) -> None:
+    def gen_sdf(self, size_x: float, size_y: float, size_z: float, pose_x: float, pose_y: float, pose_z: float) -> None:
         """
         Generate the SDF file for the world.
 
         Args:
             metadata_path (str): Path to metadata.
-            size_x (int): Size in x-direction.
-            size_y (int): Size in y-direction.
-            size_z (int): Size in z-direction.
-            pose_z (int): Pose in z-direction.
+            size_x (float): Size in x-direction.
+            size_y (float): Size in y-direction.
+            size_z (float): Size in z-direction.
+            pose_x (float): Pose in x-direction.
+            pose_y (float): Pose in y-direction.
+            pose_z (float): Pose in z-direction.
 
         Returns:
             None
         """
 
         template = FileWriter.read_template(os.path.join(globalParam.TEMPLATE_DIR_PATH ,'sdf_temp.txt'))
-        FileWriter.write_sdf_file(template, self.model_name, size_x, size_y, size_z, pose_z, os.path.join(globalParam.GAZEBO_WORLD_PATH, self.model_name))
+        FileWriter.write_sdf_file(template, self.model_name, size_x, size_y, size_z,pose_x,pose_y,pose_z, os.path.join(globalParam.GAZEBO_WORLD_PATH, self.model_name))
 
     def gen_config(self) -> None:
         """
@@ -381,15 +395,75 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
         """
 
         template = FileWriter.read_template(os.path.join(globalParam.TEMPLATE_DIR_PATH ,'gazebo_world.txt'))
-        origin_cord = self.get_true_origin()
-        centre_height = self.get_amsl(origin_cord["latitude"],origin_cord["longitude"])
-        FileWriter.write_world_file(template, self.model_name,origin_cord["latitude"],origin_cord["longitude"],os.path.join(globalParam.GAZEBO_WORLD_PATH, self.model_name),centre_height)
+        launch_cord = self.get_launch_location()
+        FileWriter.write_world_file(template, self.model_name,launch_cord["latitude"],launch_cord["longitude"],os.path.join(globalParam.GAZEBO_WORLD_PATH, self.model_name),launch_cord["altitude"])
+
+    def get_launch_pixelcord(self, south_west_bound, north_east_bound, width, height, launch_location):
+        """
+        Calculate pixel coordinates of launch location within heightmap.
+        
+        Args:
+            south_west_bound: Southwest boundary coordinates
+            north_east_bound: Northeast boundary coordinates  
+            width: Width of heightmap
+            height: Height of heightmap
+            launch_location: Launch location coordinates
+            
+        Returns:
+            tuple: (px, py) pixel coordinates
+        """
+        # Extract min/max coordinates
+        lat_min = south_west_bound[0]
+        lat_max = north_east_bound[0]
+        lon_min = south_west_bound[1]
+        lon_max = north_east_bound[1]
+        
+        # Calculate pixel coordinates
+        px = int((launch_location["longitude"] - lon_min) / (lon_max - lon_min) * width)
+        py = int((lat_max - launch_location["latitude"]) / (lat_max - lat_min) * height)
+        return px, py
+    
+    def get_offset(self, origin, coord):
+        """
+        Calculate the horizontal offset in meters between origin and target coordinates.
+        Frame of reference is ENU        
+        Args:
+            origin (dict): Origin coordinates with 'latitude' and 'longitude' keys
+            coord (dict): Target coordinates with 'latitude' and 'longitude' keys
+            
+        Returns:
+            tuple: (pose_x, pose_y) offset in meters
+            pose_x: 
+            pose_y: 
+        """
+        # Create Point objects for geopy calculations
+        origin_point = Point(origin["latitude"], origin["longitude"])
+        
+        # Calculate X offset (East-West distance)
+        # Use the same latitude but different longitude
+        coord_point_x = Point(origin["latitude"], coord["longitude"])
+        pose_x = geodesic(origin_point, coord_point_x).meters
+        
+        # Apply correct sign based on longitude difference
+        if coord["longitude"] > origin["longitude"]:
+            pose_x = -pose_x 
+            
+        # Calculate Y offset (North-South distance)  
+        # Use the same longitude but different latitude
+        coord_point_y = Point(coord["latitude"], origin["longitude"])
+        pose_y = geodesic(origin_point, coord_point_y).meters
+        
+        # Apply correct sign based on latitude difference
+        if coord["latitude"] > origin["latitude"]:
+            pose_y = -pose_y  
+            
+        return round(pose_x, 2), round(pose_y, 2)  
 
     def get_world_dimensions(self):
         """ 
         Get the dimensions of the world based on the heightmap.
 
-        Offset the origin height by 1% of the origin height to avoid collision with the ground.
+        Offset the origin height by 3% of the launch height to avoid collision with the ground.
 
         Args:
             None
@@ -397,24 +471,32 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
             tuple: A tuple containing size_x, size_y, size_z, and pose_z.
         """
         bound_array = self.boundaries.split(',')
-
-        true_boundaries = maptile_utiles.get_true_boundaries(bound_array,self.zoomlevel)
-        # update size of the map
+        true_boundaries = maptile_utiles.get_true_boundaries(bound_array, self.zoom_level)
+        
+        # Calculate map dimensions
         sw = true_boundaries["southwest"]
         se = true_boundaries["southeast"]
         ne = true_boundaries["northeast"]
 
-        self.size_x = int(geodesic(sw, se).m)
-        self.size_y = int(geodesic(se, ne).m)
+        self.size_x = round(geodesic(sw, se).m, 2)  
+        self.size_y = round(geodesic(se, ne).m, 2)  
+        self.size_z = round(self.max_height - self.min_height,2)
+        origin_coord = self.get_true_origin()
+        launch_location = self.get_launch_location()
+        pose_x,pose_y = self.get_offset(origin_coord,launch_location)
+        launch_px, launch_py = self.get_launch_pixelcord(
+            true_boundaries["southwest"], 
+            true_boundaries["northeast"], 
+            self.heightmap.size[0], 
+            self.heightmap.size[1],
+            launch_location
+        )
 
-        self.size_z = self.max_height - self.min_height
+        # Calculate launch height and pose offset
+        launch_height = self.heightmap.getpixel((launch_px, launch_py)) * self.size_z / 255
+        pose_z = round(-1 * (launch_height + 0.03 * launch_height), 2)  
 
-        center_x, center_y = (self.heightmap.size[0] // 2, self.heightmap.size[1] // 2)
-        origin_height = self.heightmap.getpixel((center_x, center_y))*self.size_z/255
-
-        pose_z = int(-1*(origin_height + 0.03*origin_height))
-
-        return self.size_x,self.size_y,self.size_z,pose_z
+        return self.size_x,self.size_y,self.size_z,pose_x,pose_y,pose_z
 
 
     def generate_gazebo_world(self): 
@@ -425,14 +507,14 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
         print("Map tiles directory being used : ",self.tile_path)
         print("Generate gazebo world files are save to : ",os.path.join(globalParam.GAZEBO_WORLD_PATH,os.path.basename(self.tile_path)))
         if os.path.isfile(os.path.join(self.tile_path, 'metadata.json')) and self.tile_path != '':
-            self.generate_ortho(self.tile_path,self.zoomlevel,self.model_name,self.boundaries)
+            self.generate_ortho(self.tile_path,self.zoom_level,self.model_name,self.boundaries)
             print("Satellite image generated successfully")
-            self.generate_rgb_heightmap(self.tile_path,self.boundaries,self.zoomlevel)
-            (size_x,size_y,size_z,posez) = self.get_world_dimensions()
+            self.generate_rgb_heightmap(self.tile_path,self.boundaries,self.zoom_level)
+            (size_x,size_y,size_z,pose_x,posey,posez) = self.get_world_dimensions()
 
             # Generate SDF files for the world
             self.gen_config()
-            self.gen_sdf(size_x,size_y,size_z, posez)
+            self.gen_sdf(size_x,size_y,size_z,pose_x,posey,posez)
             self.gen_world()
             print("Gazebo world files generated successfully")
 

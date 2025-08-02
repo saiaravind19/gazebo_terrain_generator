@@ -80,8 +80,7 @@ def download_tile():
 	timestamp = int(postvars['timestamp'])
 	outputDirectory = str(postvars['outputDirectory'])
 	outputFile = str(postvars['outputFile'])
-	outputType = str(postvars['outputType'])
-	outputScale = int(postvars['outputScale'])
+	outputScale = 1
 	source = str(postvars['source'])
 
 	replaceMap = {
@@ -121,8 +120,7 @@ def download_tile():
 def start_download():
 
 	postvars = request.form
-	outputType = postvars['outputType']
-	outputScale = int(postvars['outputScale'])
+	outputScale = 1
 	outputDirectory = postvars['outputDirectory']
 	outputFile = postvars['outputFile']
 	zoom_level = int(postvars['maxZoom'])
@@ -130,6 +128,7 @@ def start_download():
 	bounds = list(map(float, postvars['bounds'].split(",")))
 	center = list(map(float, postvars['center'].split(",")))
 	area_rect = postvars['area']
+	launchLocation = list(map(float, postvars['launchLocation'].split(",")))
 
 	outputDirectory = outputDirectory.replace("{timestamp}", str(timestamp))
 	outputFile = outputFile.replace("{timestamp}", str(timestamp))
@@ -138,7 +137,7 @@ def start_download():
 	FileWriter.addMetadata(
 		lock, os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory), filePath, outputFile,
 		"Map Tiles Downloader via AliFlux", "jpg", bounds, center, area_rect,
-		zoom_level, "mercator", 256 * outputScale
+		zoom_level, "mercator", 256 * outputScale, launchLocation=launchLocation
 	)
 	global task_status
 	task_status = {"status": "idle"} 
@@ -147,14 +146,11 @@ def start_download():
 @app.route('/end-download', methods=['POST'])
 def end_download():
 	postvars = request.form
-	outputType = postvars['outputType']
-	outputScale = int(postvars['outputScale'])
 	outputDirectory = postvars['outputDirectory']
 	outputFile = postvars['outputFile']
 	zoom_level = int(postvars['maxZoom'])
 	timestamp = int(postvars['timestamp'])
 	bounds = list(map(float, postvars['bounds'].split(",")))
-	center = list(map(float, postvars['center'].split(",")))
 
 	outputDirectory = outputDirectory.replace("{timestamp}", str(timestamp))
 	outputFile = outputFile.replace("{timestamp}", str(timestamp))

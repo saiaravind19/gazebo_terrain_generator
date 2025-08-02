@@ -1,0 +1,26 @@
+.coordinates-display {
+    position: absolute;
+    bottom: 40px;
+    right: 10px;
+    background: white;
+    padding: 10px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    z-index: 1000;
+    font-family: 'Arial', sans-serif;
+}
+
+.coordinates-display h4 {
+    margin: 0 0 10px 0;
+    color: #333;
+}
+
+.coordinates-display p {
+    margin: 5px 0;
+    color: #666;
+}
+
+.coordinates-display span {
+    color: #000;
+    font-weight: bold;
+}
