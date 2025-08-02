@@ -1,5 +1,6 @@
-# Import necessary libraries
-import os, cv2, shutil
+import os
+import cv2
+import shutil
 import json
 import numpy as np
 from utils.file_writer import FileWriter
@@ -10,27 +11,96 @@ from geopy.distance import geodesic
 from geopy.distance import distance
 from geopy.point import Point
 from multiprocessing import Pool, cpu_count
+from PIL import Image
 
 
+class HeightmapGenerator:
+    def __init__(self,**kwargs):
+        self.heightmap = None
+        self.heightmap_array = None
+        self.size_x=self.size_y=self.size_z=0
 
-    
-class orthoGenerator:
+    def get_amsl(self, lat: float, lon: float):
+        """
+        Get the height above mean sea level (AMSL) for a given latitude and longitude.
+        Args:
+            lat (float): Latitude in degrees.
+            lon (float): Longitude in degrees.
+        Returns:
+            float: Height above mean sea level in meters.
+        """
+        tile_x,tile_y = maptile_utiles.lat_lon_to_tile(lat, lon,globalParam.DEM_RESOLUTION)
+        boundaries = maptile_utiles.get_tile_bounds(tile_x, tile_y, globalParam.DEM_RESOLUTION)
+        # check if tile exist
+        lat_max = boundaries["northeast"][0]
+        lat_min = boundaries["southwest"][0]
+        lon_max = boundaries["northeast"][1]
+        lon_min = boundaries["southwest"][1]
+        dem_tile_path = os.path.join(globalParam.DEM_PATH, str(globalParam.DEM_RESOLUTION), str(tile_x), str(tile_y)+'.png')
+        if os.path.isfile(dem_tile_path) == True:
+            # read the image from the tile its a gbr image format
+            dem_img = cv2.imread(dem_tile_path)
+            #get the size of the image
+            height,width = dem_img.shape[:2]
+            # from boundaries and the desiderd lat long get the pixel coordinates
+            px = int((lon - lon_min) / (lon_max - lon_min) * width)
+            py = int((lat_max - lat) / (lat_max - lat_min) * height)
+            # from pixel read the image and get the height
+            b,g,r = dem_img[py,px]  
+            b,g,r = float(b), float(g), float(r)
+            # convert the pixel value to height 
+            # reference : https://docs.mapbox.com/data/tilesets/reference/mapbox-terrain-dem-v1/
+            height = ((r * 256 * 256 + g * 256 + b) * 0.1) - 10000
+            return height
 
-    def __init__(self,path : str):
-        self.metadata_path = path
-        with open(os.path.join(self.metadata_path, 'metadata.json')) as f:
-            data = json.load(f)
-            self.boundaries = data["bounds"]
-            self.zoomlevel = data["zoom_level"]
-        self.model_name = os.path.basename(self.metadata_path)
+        else :
+            # raise an error and kill the program
 
-    def generate_height_image(self,height_data ,resolution : int) -> None:
+            print("Tile not found",tile_x,tile_y,globalParam.DEM_RESOLUTION)
+            return None
+        
+    def get_heightmap(self,sw_lat:float,sw_lon:float,size_x:int,size_y:int) -> list:
+        """
+        Generate a list of latitude and longitude coordinates for a grid based on a 
+        southwest corner point and specified dimensions.
+        Retrieve elevation data for a list of latitude and longitude coordinates 
+        from a Digital Elevation Model (DEM).
+        Args:
+            sw_lat (float): The latitude of the southwest corner of the grid.
+            sw_lon (float): The longitude of the southwest corner of the grid.
+            size_x (int): The width of the grid in meters.
+            size_y (int): The height of the grid in meters.
+        Returns:
+            list: A list of elevation values.
+        """
+        equispace_x = size_x/globalParam.HEIGHTMAP_RESOLUTION
+        equispace_y = size_y/globalParam.HEIGHTMAP_RESOLUTION
+        start_point = Point(sw_lat,sw_lon)
+        height_array = []
+        for y in range(0,globalParam.HEIGHTMAP_RESOLUTION):
+            current_latitude = distance(meters=equispace_y*y).destination(point=start_point, bearing=0)
+            for x in range(0,globalParam.HEIGHTMAP_RESOLUTION):
+                new_point = distance(meters=equispace_x*x).destination(point=current_latitude, bearing=90)
+                '''
+                Write a piece of code to get read the height from dem
+                
+                '''                
+                # get the logic to get the height from dem
+
+            
+                height_array.append(self.get_amsl(new_point.latitude, new_point.longitude))
+        
+        
+        return height_array
+
+    def generate_height_image(self,height_data : list,resolution : int,path : str) -> None:
         """
         Generate the grey scale height image.
 
         Args:
             height_data: Elevation data.
             resolution (int): Resolution of the heightmap.
+            path (str): Path to save the heightmap image.
 
         Returns:
             None
@@ -45,83 +115,52 @@ class orthoGenerator:
         # Reshape the array to a 2D image
         image = normalized_array.reshape((resolution, resolution))
 
-
         resized_image = cv2.resize(image, (1025, 1025), interpolation=cv2.INTER_LINEAR)
         blur = cv2.GaussianBlur(resized_image, (1, 1), 0)
 
         flipped_img = cv2.flip(blur, 0)
-        model =os.path.basename(self.metadata_path)
-       # Save the height map image
-        cv2.imwrite(os.path.join(globalParam.GAZEBO_WORLD_PATH, model, 'textures', model+'_height_map.png'), flipped_img)
-
-    def get_origin_height(self)-> float:
-        """
-        Get the height at the centre of the heightmap data.
-
-        Args:
-            height_data: Elevation data.
-            resolution (int): Resolution of the heightmap.
-
-        Returns:
-            float: Origin height.
-        """
-
-        origin_cord = self.get_true_origin()
-        return origin_cord["altitude"]
-    
-
-
-
-    def gen_sdf(self, size_x :int, size_y :int, size_z :int, pose_z :int) -> None:
-        """
-        Generate the SDF file for the world.
-
-        Args:
-            metadata_path (str): Path to metadata.
-            size_x (int): Size in x-direction.
-            size_y (int): Size in y-direction.
-            size_z (int): Size in z-direction.
-            pose_z (int): Pose in z-direction.
-
-        Returns:
-            None
-        """
-
-        template = FileWriter.read_template(os.path.join(globalParam.TEMPLATE_DIR_PATH ,'sdf_temp.txt'))
-        FileWriter.write_sdf_file(template, self.model_name, size_x, size_y, size_z, pose_z, os.path.join(globalParam.GAZEBO_WORLD_PATH, self.model_name))
-
-    def gen_config(self) -> None:
-        """
-        Generate the configuration file for the model.
-
-        Args:
-            metadata_path (str): Path to metadata.
-
-        Returns:
-            None
-        """
-
+        model = os.path.basename(path)
         
-        template = FileWriter.read_template(os.path.join(globalParam.TEMPLATE_DIR_PATH ,'config_temp.txt'))
-        FileWriter.write_config_file(template, self.model_name, os.path.join(globalParam.GAZEBO_WORLD_PATH, self.model_name))
+        # Convert OpenCV image to PIL Image and save as TIFF
+        self.heightmap = Image.fromarray(flipped_img, mode='L')  # 'L' for 8-bit grayscale
+        self.heightmap.save(os.path.join(globalParam.GAZEBO_WORLD_PATH, model, 'textures', model+'_height_map.tif'), format="TIFF")
 
-    @staticmethod
-    def are_dimensions_equal(img1, img2) -> bool:
+
+    def gen_terrain(self,path : str,boundaries : str,zoomlevel : int)-> list: 
         """
-        Check if dimensions of two images are equal.
+        Generate the terrain height map from the data received from Bing.
 
         Args:
-            img1: First image.
-            img2: Second image.
+            path (str): Path to save the heightmap image.
+            boundaries (str): Boundaries of the map in the format "lat1,lon1,lat2,lon2".
+            zoomlevel (int): Zoom level of the map.
 
         Returns:
-            bool: True if dimensions are equal, False otherwise.
-        """ 
-        return img1.shape[:2] == img2.shape[:2]
+            list: Size and pose information.
+        """
+
+        #get the true boundaries as there is a padding non uniform padding added 
+        bound_array = boundaries.split(',')
+        boundaries = maptile_utiles.get_true_boundaries(bound_array,zoomlevel)
+        sw = boundaries["southwest"]
+        se = boundaries["southeast"]
+        ne = boundaries["northeast"]
+
+        #Caalculate the size_x, and size_y
+        self.size_x = int(geodesic(sw, se).m)
+        self.size_y = int(geodesic(se, ne).m)
+        self.heightmap_array = self.get_heightmap(sw[0],sw[1],self.size_x,self.size_y)
+
+        self.generate_height_image(self.heightmap_array,globalParam.HEIGHTMAP_RESOLUTION,path)
 
 
 
-    def get_x_image_dirlist(self, image_dir: str, tile_boundaries: dict) -> list:
+class OrthoGenerator:
+    def __init__(self,**kwargs):
+        super().__init__(**kwargs)
+
+
+    def get_x_tile_directories(self, image_dir: str, tile_boundaries: dict) -> list:
         """
         Get a numerically sorted list of X-tile directories within tile boundary limits.
 
@@ -161,13 +200,33 @@ class orthoGenerator:
             cv2.imwrite(output_file, cv2.vconcat(images))
 
     @staticmethod
-    def _run_instance_method(args):
+    def _run_instance_method(args : tuple) -> None:
+        """
+        Run an instance method with the provided arguments.
+        Args:
+            args (tuple): A tuple containing the instance and its method arguments.
+        Returns:
+            None
+        """
         instance, dir_name, image_dir, tile_boundaries, temp_output_dir = args
         instance.process_column_image(dir_name, image_dir, tile_boundaries, temp_output_dir)
+    
+    @staticmethod
+    def are_dimensions_equal(img1, img2) -> bool:
+        """
+        Check if dimensions of two images are equal.
 
-        
+        Args:
+            img1: First image.
+            img2: Second image.
 
-    def generate_ortho(self,path: str)-> None:
+        Returns:
+            bool: True if dimensions are equal, False otherwise.
+        """ 
+        return img1.shape[:2] == img2.shape[:2]
+
+
+    def generate_ortho(self,path: str,zoomlevel,model_name,boundaries)-> None:
         """
         Generate the aerial image of the map.
 
@@ -178,24 +237,24 @@ class orthoGenerator:
             None
         """
  
-        image_dir = os.path.join(path, str(self.zoomlevel))
+        image_dir = os.path.join(path, str(zoomlevel))
         
         # Check and create necessary directories
-        maptile_utiles.dir_check(os.path.join(globalParam.GAZEBO_WORLD_PATH, self.model_name, 'textures'))
-        maptile_utiles.dir_check(os.path.join(globalParam.TEMPORARY_SATELLITE_IMAGE, self.model_name))
-        bound_array = self.boundaries.split(',')
-        tile_boundaries = maptile_utiles.get_max_tilenumber(bound_array,self.zoomlevel)
-        image_dir_list = self.get_x_image_dirlist(image_dir,tile_boundaries)
+        maptile_utiles.dir_check(os.path.join(globalParam.GAZEBO_WORLD_PATH, model_name, 'textures'),remove_existing=True)
+        maptile_utiles.dir_check(os.path.join(globalParam.TEMPORARY_SATELLITE_IMAGE, model_name),remove_existing=True)
+        bound_array = boundaries.split(',')
+        tile_boundaries = maptile_utiles.get_max_tilenumber(bound_array,zoomlevel)
+        image_dir_list = self.get_x_tile_directories(image_dir,tile_boundaries)
 
 
-        temp_output_dir = os.path.join(globalParam.TEMPORARY_SATELLITE_IMAGE, self.model_name)
+        temp_output_dir = os.path.join(globalParam.TEMPORARY_SATELLITE_IMAGE, model_name)
         args_list = [
             (self, dir_name, image_dir, tile_boundaries, temp_output_dir)
             for dir_name in image_dir_list
         ]
         #  Multiprocessing call
         with Pool(processes=cpu_count()) as pool:
-            pool.map(orthoGenerator._run_instance_method, args_list)
+            pool.map(OrthoGenerator._run_instance_method, args_list)
 
         image_list = sorted([
             os.path.join(temp_output_dir, img)
@@ -205,142 +264,54 @@ class orthoGenerator:
         filtered_images = [images[0]]
 
         for img in images[1:]:
-            if orthoGenerator.are_dimensions_equal(filtered_images[-1], img):
+            if OrthoGenerator.are_dimensions_equal(filtered_images[-1], img):
                 filtered_images.append(img)
         stitched_image = cv2.hconcat(filtered_images)
 
         # Save the stitched image
         compression_params = [cv2.IMWRITE_PNG_COMPRESSION, 9]
-        print(os.path.join(globalParam.GAZEBO_WORLD_PATH, self.model_name, 'textures', self.model_name+'_aerial.png'))
-        cv2.imwrite(os.path.join(globalParam.GAZEBO_WORLD_PATH, self.model_name, 'textures', self.model_name+'_aerial.png'), stitched_image, compression_params)
+        cv2.imwrite(os.path.join(globalParam.GAZEBO_WORLD_PATH, model_name, 'textures', model_name+'_aerial.png'), stitched_image, compression_params)
 
 
-    def get_true_origin(self):
-        pass
+
+class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
+    def __init__(self,tile_path:str,**kwargs):
+        super().__init__(**kwargs)
+        self.tile_path = tile_path
+        with open(os.path.join(self.tile_path, 'metadata.json')) as f:
+            data = json.load(f)
+            self.boundaries = data["bounds"]
+            self.zoomlevel = data["zoom_level"]
+
+        self.model_name = os.path.basename(self.tile_path)
 
 
-    def gen_terrain(self)-> list: 
-        pass
+    def get_origin_height(self)-> float:
+        """
+        Get the height at the centre of the heightmap data.
+
+        Args:
+            height_data: Elevation data.
+            resolution (int): Resolution of the heightmap.
+
+        Returns:
+            float: Origin height.
+        """
+
+        origin_cord = self.get_true_origin()
+        return origin_cord["altitude"]
     
 
-  
-
-class heightmapgenerator(orthoGenerator):
-    def __init__(self,path : str):
-        super().__init__(path)
-
-
-    def get_amsl(self, lat: float, lon: float):
-        """
-        Get the height above mean sea level (AMSL) for a given latitude and longitude.
-        Args:
-            lat (float): Latitude in degrees.
-            lox,y n (float): Longitude in degrees.
-        Returns:
-            float: Height above mean sea level in meters.
-        """
-        tile_x,tile_y = maptile_utiles.lat_lon_to_tile(lat, lon,globalParam.DEM_RESOLUTION)
-        boundaries = maptile_utiles.get_tile_bounds(tile_x, tile_y, globalParam.DEM_RESOLUTION)
-        # check if tile exist
-        lat_max = boundaries["northeast"][0]
-        lat_min = boundaries["southwest"][0]
-        lon_max = boundaries["northeast"][1]
-        lon_min = boundaries["southwest"][1]
-        dem_tile_path = os.path.join(globalParam.DEM_PATH, str(globalParam.DEM_RESOLUTION), str(tile_x), str(tile_y)+'.png')
-        if os.path.isfile(dem_tile_path) == True:
-            # read the image from the tile its a gbr image format
-            dem_img = cv2.imread(dem_tile_path)
-            #get the size of the image
-            height,width = dem_img.shape[:2]
-            # from boundaries and the desiderd lat long get the pixel coordinates
-            px = int((lon - lon_min) / (lon_max - lon_min) * width)
-            py = int((lat_max - lat) / (lat_max - lat_min) * height)
-            # from pixel read the image and get the height
-            b,g,r = dem_img[py,px]  
-            b,g,r = float(b), float(g), float(r)
-            # convert the pixel value to height 
-            # reference : https://docs.mapbox.com/data/tilesets/reference/mapbox-terrain-dem-v1/
-            height = ((r * 256 * 256 + g * 256 + b) * 0.1) - 10000
-            return height
-
-        else :
-            # raise an error and kill the program
-
-            print("Tile not found")
-            return None
-        
-    def get_heightmap(self,sw_lat:float,sw_lon:float,size_x:int,size_y:int) -> list:
-        """
-        Generate a list of latitude and longitude coordinates for a grid based on a 
-        southwest corner point and specified dimensions.
-        Retrieve elevation data for a list of latitude and longitude coordinates 
-        from a Digital Elevation Model (DEM).
-        Args:
-            sw_lat (float): The latitude of the southwest corner of the grid.
-            sw_lon (float): The longitude of the southwest corner of the grid.
-            size_x (int): The width of the grid in meters.
-            size_y (int): The height of the grid in meters.
-        Returns:
-            list: A list of elevation values.
-        """
-        equispace_x = size_x/globalParam.HEIGHTMAP_RESOLUTION
-        equispace_y = size_y/globalParam.HEIGHTMAP_RESOLUTION
-        start_point = Point(sw_lat,sw_lon)
-        height_array = []
-        for y in range(0,globalParam.HEIGHTMAP_RESOLUTION):
-            current_latitude = distance(meters=equispace_y*y).destination(point=start_point, bearing=0)
-            for x in range(0,globalParam.HEIGHTMAP_RESOLUTION):
-                new_point = distance(meters=equispace_x*x).destination(point=current_latitude, bearing=90)
-                '''
-                Write a piece of code to get read the height from dem
-                
-                '''                
-                # get the logic to get the height from dem
-
-            
-                height_array.append(self.get_amsl(new_point.latitude, new_point.longitude))
-        
-        
-        return height_array
-
-
-    def gen_terrain(self)-> list: 
-        """
-        Generate the terrain height map from the data received from Bing.
-
-        Args:
-            metadata_path (str): Path to metadata.
-
-        Returns:
-            list: Size and pose information.
-        """
-
-        #get the true boundaries as there is a padding non uniform padding added 
-        bound_array = self.boundaries.split(',')
-        boundaries = maptile_utiles.get_true_boundaries(bound_array,self.zoomlevel)
-        sw = boundaries["southwest"]
-        se = boundaries["southeast"]
-        ne = boundaries["northeast"]
-
-        #Caalculate the sizex, and sizey
-        sizex = int(geodesic(sw, se).m)
-        sizey = int(geodesic(se, ne).m)
-
-        print("size of the terrian map",sizex,sizey)
-        print("Using offline DEM data for heightmap generation")
-        heightmap_array = self.get_heightmap(sw[0],sw[1],sizex,sizey)
-
-        self.generate_height_image(heightmap_array,globalParam.HEIGHTMAP_RESOLUTION)
-        origin_height = self.get_origin_height()
-        print(origin_height)
-        # Calculate posez, sizez
-        posez = int(-1*(origin_height - np.min(heightmap_array)+5))
-        sizez = np.max(heightmap_array) - np.min(heightmap_array)
-
-        return sizex,sizey,sizez,posez
-        
 
     def get_true_origin(self)-> list:
+        """
+            Get the true origin of the map based on the boundaries and zoom level.
+            Args:
+                None
+            Returns:
+                dict: A dictionary containing latitude, longitude, and altitude of the origin.
+        """
+    
         bound_array = self.boundaries.split(',')
         boundaries = maptile_utiles.get_true_boundaries(bound_array,self.zoomlevel)
 
@@ -348,7 +319,7 @@ class heightmapgenerator(orthoGenerator):
         se = boundaries["southeast"]
         ne = boundaries["northeast"]
         origin_lon,origin_lat = float((se[1]+sw[1])/2),float((sw[0]+ne[0])/2) 
-        print("true origin:",origin_lat," ",origin_lon)
+        print("True origin:",origin_lat," ",origin_lon)
         return {
             "latitude": origin_lat,
             "longitude": origin_lon,
@@ -357,6 +328,38 @@ class heightmapgenerator(orthoGenerator):
 
 
 
+
+    def gen_sdf(self, size_x :int, size_y :int, size_z :int, pose_z :int) -> None:
+        """
+        Generate the SDF file for the world.
+
+        Args:
+            metadata_path (str): Path to metadata.
+            size_x (int): Size in x-direction.
+            size_y (int): Size in y-direction.
+            size_z (int): Size in z-direction.
+            pose_z (int): Pose in z-direction.
+
+        Returns:
+            None
+        """
+
+        template = FileWriter.read_template(os.path.join(globalParam.TEMPLATE_DIR_PATH ,'sdf_temp.txt'))
+        FileWriter.write_sdf_file(template, self.model_name, size_x, size_y, size_z, pose_z, os.path.join(globalParam.GAZEBO_WORLD_PATH, self.model_name))
+
+    def gen_config(self) -> None:
+        """
+        Generate the configuration file for the model.
+
+        Args:
+            metadata_path (str): Path to metadata.
+
+        Returns:
+            None
+        """
+        template = FileWriter.read_template(os.path.join(globalParam.TEMPLATE_DIR_PATH ,'config_temp.txt'))
+        FileWriter.write_config_file(template, self.model_name, os.path.join(globalParam.GAZEBO_WORLD_PATH, self.model_name))
+    
     def gen_world(self) -> None:
         """
         Generate the gazebo world file.
@@ -372,27 +375,45 @@ class heightmapgenerator(orthoGenerator):
         centre_height = self.get_amsl(origin_cord["latitude"],origin_cord["longitude"])
         FileWriter.write_world_file(template, self.model_name,origin_cord["latitude"],origin_cord["longitude"],os.path.join(globalParam.GAZEBO_WORLD_PATH, self.model_name),centre_height)
 
+    def get_world_dimensions(self):
+        """ 
+        Get the dimensions of the world based on the heightmap.
 
-def generate_gazebo_world(tile_path):    
+        Offset the origin height by 1% of the origin height to avoid collision with the ground.
 
-    # Main loop to select directory and trigger functions
-    directory_path = tile_path
-    print("Map tiles directory being used : ",directory_path)
-    print("Generate gazebo world files are save to : ",os.path.join(globalParam.GAZEBO_WORLD_PATH,os.path.basename(directory_path)))
-    if os.path.isfile(os.path.join(directory_path, 'metadata.json')) and directory_path != '':
-        world_generator = heightmapgenerator(directory_path)
-        world_generator.generate_ortho(directory_path)
-        print("Satelliet image generated successfully")
-        (sizex,sizey,sizez,posez) = world_generator.gen_terrain()
-        print("Height map generated successfully")
-        # Generate configuration file
-        world_generator.gen_config()
-        print("Gazebo world files generated successfully")
-        print(sizex,sizey)
-        # Generate SDF file for the world
-        world_generator.gen_sdf(sizex,sizey,sizez, posez)
-        world_generator.gen_world()
-        print(os.path.join(globalParam.TEMPORARY_SATELLITE_IMAGE, os.path.basename(directory_path)))
-        shutil.rmtree(os.path.join(globalParam.TEMPORARY_SATELLITE_IMAGE, os.path.basename(directory_path)))
+        Args:
+            None
+        Returns:
+            tuple: A tuple containing size_x, size_y, size_z, and pose_z.
+        """
+        self.size_z = np.max(self.heightmap_array) - np.min(self.heightmap_array)
 
+        center_x, center_y = (self.heightmap.size[0] // 2, self.heightmap.size[1] // 2)
+        origin_height = self.heightmap.getpixel((center_x, center_y))*self.size_z/255
+
+        pose_z = int(-1*(origin_height + 0.01*origin_height))
+
+        return self.size_x,self.size_y,self.size_z,pose_z
+
+
+    def generate_gazebo_world(self): 
+        """
+            Generate the gazebo world along with world files.
+        """   
+
+        print("Map tiles directory being used : ",self.tile_path)
+        print("Generate gazebo world files are save to : ",os.path.join(globalParam.GAZEBO_WORLD_PATH,os.path.basename(self.tile_path)))
+        if os.path.isfile(os.path.join(self.tile_path, 'metadata.json')) and self.tile_path != '':
+            self.generate_ortho(self.tile_path,self.zoomlevel,self.model_name,self.boundaries)
+            print("Satellite image generated successfully")
+            self.gen_terrain(self.tile_path,self.boundaries,self.zoomlevel)
+            (size_x,size_y,size_z,posez) = self.get_world_dimensions()
+
+            # Generate SDF files for the world
+            self.gen_config()
+            self.gen_sdf(size_x,size_y,size_z, posez)
+            self.gen_world()
+            print("Gazebo world files generated successfully")
+
+            shutil.rmtree(os.path.join(globalParam.TEMPORARY_SATELLITE_IMAGE, os.path.basename(self.tile_path)))
 

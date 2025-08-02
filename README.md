@@ -1,6 +1,6 @@
 # Gazebo Terrain Generator
 
-A super easy-to-use tool for generating 3D Gazebo terrain.
+A super easy-to-use tool for generate 3D Gazebo terrain using real-world elevation and satellite data.
 
 <p align="center">
   <a href="https://www.youtube.com/watch?v=pxL2UF9xl_w">
@@ -8,11 +8,13 @@ A super easy-to-use tool for generating 3D Gazebo terrain.
   </a>
 </p>
 
+## Supported and Tested Stack
 
+- **[Gazebo Harmonic](https://gazebosim.org/docs/harmonic/install_ubuntu/)**
 
 ## 🛠️ Setup Instructions
 
-### 1. Create and Activate Virtual Environment (Recommended)
+### Create and Activate Virtual Environment (Recommended)
 
 It's recommended to use a virtual environment to avoid dependency conflicts:
 
@@ -36,63 +38,51 @@ venv\Scripts\activate
 
 </details>
 
-### 2. Install Requirements
+### Install Requirements
 
 Make sure your virtual environment is active, then install all required Python packages using:
+  ```bash
+  pip install -r requirements.txt
+  ```
 
-```bash
-pip install -r requirements.txt
-```
-
-
-## 3. Run Gazebo world Generator
+## Run Gazebo world Generator
 1. Navigate to the `gazebo_terrian_generator` repository:
-
-   ```bash
-   cd gazebo_terrian_generator/scripts
-   python server.py
-   ```
+    ```bash
+    cd gazebo_terrian_generator/scripts
+    python server.py
+    ```
 
 2. To access application open up your web browser and navigate to `http://localhost:8080`.
 3. Gazebo world generated are stored inside `output/gazebo_terrian/` by default. Feel free to change the path defined in `scripts/utils/param.py` as per you choice.
 
-### 4. Spawning the gazebo world
-1. Export gazebo resource path based on your gazebo version. Use the table below as reference.
-
-| Gazebo Version |  Resource Path Variable(s)|
-|----------------|---------------------------|
-| **Ignition** and later | `export IGN_GAZEBO_RESOURCE_PATH=$IGN_GAZEBO_RESOURCE_PATH:~/<your model directory path>` |
-| **Harmonic**    | `export GZ_SIM_RESOURCE_PATH=$GZ_SIM_RESOURCE_PATH:~/<your model path here>` |
-
-
+## Spawning the gazebo world
+1. Export gazebo resource path.
+    ```bash 
+    export GZ_SIM_RESOURCE_PATH=$GZ_SIM_RESOURCE_PATH:~/<your model path here>
+    ```
 
 2. Run Gazebo with the required world file.
+    ```bash 
+    gz sim <path of your  world file>
+    ```
 
-| Gazebo Version |  Resource Path Variable(s)|
-|----------------|---------------------------|
-| **Ignition** and later | `ign gazbeo "<path of your  world file>` |
-| **Harmonic**    |  `gz sim <path of your  world file file>` |
 
-**Note:** Replace path with your actual path of the .world.
+**Note:** Replace path with your actual path of the world file.
 
 
 ## Spawing sample worlds Example: 
 
-1. Export the gazebo model path
-
-| Gazebo Version |  Resource Path Variable(s)|
-|----------------|---------------------------|
-| **Ignition** and later | `export IGN_GAZEBO_RESOURCE_PATH=$IGN_GAZEBO_RESOURCE_PATH:~/gazebo_terrian_generator/sample_worlds` |
-| **Harmonic**    | `export GZ_SIM_RESOURCE_PATH=$GZ_SIM_RESOURCE_PATH:~/gazebo_terrian_generator/sample_worlds` |
-
-
+1. Export the gazebo model path.
+    ```bash
+    GZ_SIM_RESOURCE_PATH=$GZ_SIM_RESOURCE_PATH:~/gazebo_terrian_generator/sample_worlds
+    ```
 2. Spawing gazebo world.
+    ```bash
+    gz sim prayag/prayag.sdf
+    ```
 
-| Gazebo Version |  Resource Path Variable(s)|
-|----------------|---------------------------|
-| **Ignition** and later | `ign gazebo prayag/prayag.world` |
-| **Harmonic**    |  `gz sim prayag/prayag.world` |
-
+## MapBox API key
+A free api key is being used in the repo if it gets limited then please feel free to create your own API key from official [MapBox's website](https://www.mapbox.com/) and replace it in the [`configuration file`](scripts/utils/param.py)
 
 ## Important Disclaimer
 
@@ -101,3 +91,12 @@ Downloading map tiles is subject to the terms and conditions of the tile provide
 ## License
 
 This project uses work of [Ali Ashraf](https://github.com/AliFlux/MapTilesDownloader).
+
+## Reference
+- [Gazebo Heightmap](https://github.com/AS4SR/general_info/wiki/Creating-Heightmaps-for-Gazebo
+)
+- [Mapbox Dem](https://docs.mapbox.com/data/tilesets/reference/mapbox-terrain-dem-v1/)
+
+
+
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/saiaravind19/gazebo_terrain_generator)
