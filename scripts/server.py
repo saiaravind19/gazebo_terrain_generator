@@ -48,18 +48,29 @@ def process_end_download(bounds, zoom_level, outputDirectory, outputFile, filePa
 
 
 def validate_mapbox_key(api_key):
-    url = f"https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/0,0,1/1x1?access_token={api_key}"
-    response = requests.get(url)
-    
-    if response.status_code == 200:
-        print("Mapbox API key is validated Successfully.")
-        return True
-    elif response.status_code == 401:
-        print("Invalid Mapbox API key.")
-    else:
-        print(f"Unexpected response: {response.status_code}")
-        print(response.text)
-    return False
+    try:
+        url = f"https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/0,0,1/1x1?access_token={api_key}"
+        response = requests.get(url, timeout=5)  # Add timeout
+        
+        if response.status_code == 200:
+            print("Mapbox API key is validated successfully.")
+            return True
+        elif response.status_code == 401:
+            print("Invalid Mapbox API key.")
+            return False
+        else:
+            print(f"Unexpected response: {response.status_code}")
+            print(response.text)
+            return False
+    except requests.exceptions.ConnectionError:
+        print(" Cannot validate Mapbox API key - no internet connection.")
+        return False  
+    except requests.exceptions.Timeout:
+        print("Mapbox API validation timed out.")
+        return False  
+    except Exception as e:
+        print(f"Error validating Mapbox API key: {e}")
+        return False 
 
 
 @app.route('/task-status', methods=['GET'])
@@ -171,8 +182,8 @@ def serve_static(path):
 	return send_from_directory(file_dir, path, mimetype=mime_type)
 
 if __name__ == '__main__':
+	
 	if not validate_mapbox_key(globalParam.MAPBOX_API_KEY):
-		print("Please set your Mapbox API key in scripts/utils/param.py")
 		exit(1)
 	print("Starting Flask server...")
 	app.run(host='0.0.0.0', port=8080, threaded=True)
