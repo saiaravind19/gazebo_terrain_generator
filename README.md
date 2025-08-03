@@ -1,9 +1,6 @@
-<div style="display: flex; justify-content: space-between; align-items: center;">
-  <h1>Gazebo Terrain Generator</h1>
-  <a href="https://deepwiki.com/saiaravind19/gazebo_terrain_generator">
-    <img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki">
-  </a>
-</div>
+# Gazebo Terrain Generator  [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/saiaravind19/gazebo_terrain_generator) 
+
+
 
 A super easy-to-use tool for generate 3D Gazebo terrain using real-world elevation and satellite data.
 
