@@ -55,7 +55,6 @@ def download_tile_image(args : tuple)-> None:
     if img is not None:
         file_path = os.path.join(output_dir, f"{y}.png")
         cv2.imwrite(file_path, img)
-        print(f"[INFO] Saved: {file_path}")
     else:
         print(f"[WARN] Skipped tile ({x}, {y}) due to download error.")
 

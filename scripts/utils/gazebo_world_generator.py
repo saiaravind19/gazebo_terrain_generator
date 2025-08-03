@@ -505,7 +505,6 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
         """   
 
         print("Map tiles directory being used : ",self.tile_path)
-        print("Generate gazebo world files are save to : ",os.path.join(globalParam.GAZEBO_WORLD_PATH,os.path.basename(self.tile_path)))
         if os.path.isfile(os.path.join(self.tile_path, 'metadata.json')) and self.tile_path != '':
             self.generate_ortho(self.tile_path,self.zoom_level,self.model_name,self.boundaries)
             print("Satellite image generated successfully")
@@ -516,6 +515,7 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
             self.gen_config()
             self.gen_sdf(size_x,size_y,size_z,pose_x,posey,posez)
             self.gen_world()
+            print("Generate gazebo world files are save to : ",os.path.join(globalParam.GAZEBO_WORLD_PATH,os.path.basename(self.tile_path)))
             print("Gazebo world files generated successfully")
 
             shutil.rmtree(globalParam.TEMP_PATH)
