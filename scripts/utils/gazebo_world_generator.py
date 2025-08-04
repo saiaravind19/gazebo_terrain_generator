@@ -369,7 +369,7 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
         """
 
         template = FileWriter.read_template(os.path.join(globalParam.TEMPLATE_DIR_PATH ,'sdf_temp.txt'))
-        FileWriter.write_sdf_file(template, self.model_name, size_x, size_y, size_z,pose_x,pose_y,pose_z, os.path.join(globalParam.GAZEBO_WORLD_PATH, self.model_name))
+        FileWriter.write_sdf_file(template, self.model_name, size_x, size_y, size_z,pose_x,pose_y,pose_z, os.path.join(globalParam.GAZEBO_MODEL_PATH, self.model_name))
 
     def gen_config(self) -> None:
         """
@@ -396,7 +396,8 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
 
         template = FileWriter.read_template(os.path.join(globalParam.TEMPLATE_DIR_PATH ,'gazebo_world.txt'))
         launch_cord = self.get_launch_location()
-        FileWriter.write_world_file(template, self.model_name,launch_cord["latitude"],launch_cord["longitude"],os.path.join(globalParam.GAZEBO_WORLD_PATH, self.model_name),launch_cord["altitude"])
+        FileWriter.write_world_file(template, self.model_name,launch_cord["latitude"],launch_cord["longitude"],os.path.join(globalParam.GAZEBO_MODEL_PATH, self.model_name),launch_cord["altitude"])
+        FileWriter.write_world_file(template, self.model_name,launch_cord["latitude"],launch_cord["longitude"],globalParam.GAZEBO_WORLD_PATH,launch_cord["altitude"])
 
     def get_launch_pixelcord(self, south_west_bound, north_east_bound, width, height, launch_location):
         """
@@ -515,7 +516,7 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
             self.gen_config()
             self.gen_sdf(size_x,size_y,size_z,pose_x,posey,posez)
             self.gen_world()
-            print("Generate gazebo world files are save to : ",os.path.join(globalParam.GAZEBO_WORLD_PATH,os.path.basename(self.tile_path)))
+            print("Generate gazebo world files are save to : ",os.path.join(globalParam.GAZEBO_MODEL_PATH,os.path.basename(self.tile_path)))
             print("Gazebo world files generated successfully")
 
             shutil.rmtree(globalParam.TEMP_PATH)

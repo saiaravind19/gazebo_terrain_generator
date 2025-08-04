@@ -59,32 +59,26 @@ Make sure your virtual environment is active, then install all required Python p
 
 ### Environment Variables
 
-You can customize where Gazebo worlds are saved using environment variables:
-
-#### **GAZEBO_WORLD_PATH** (Optional)
-Controls where generated Gazebo worlds are stored:
+You can customize where Gazebo Models and World are saved using environment variables:
 
 ```bash
-# Use absolute path
-export GAZEBO_WORLD_PATH="/opt/gazebo/custom_worlds"
+export GAZEBO_MODEL_PATH="~/Desktop/gazebo_models"
+export GAZEBO_WORLD_PATH="~/Desktop/gazebo_models/worlds"
 
-# Use home directory shortcut
-export GAZEBO_WORLD_PATH="~/Desktop/my_gazebo_worlds"
-
-# Use relative path (will be converted to absolute)
-export GAZEBO_WORLD_PATH="./custom_worlds"
 ```
 
 **Default Location**: If no environment variable is set, worlds are saved to:
 ```
-gazebo_terrian_generator/output/gazebo_terrian/
+Models saved in **~/gazebo_terrian_generator/output/gazebo_terrian/**
+World files in **~/gazebo_terrian_generator/output/gazebo_terrian/worlds**
+
 ```
 
 ### File Structure
 
-Generated worlds follow this structure:
+Generated model follow this structure:
 ```
-<GAZEBO_WORLD_PATH>/
+<GAZEBO_MODEL_PATH>/
 ├── world_name/
 │   ├── model.sdf              # Gazebo model definition
 │   ├── model.config           # Model configuration
@@ -92,6 +86,11 @@ Generated worlds follow this structure:
 │   └── textures/
 │       ├── world_name_height_map.tif    # Elevation heightmap
 │       └── world_name_aerial.png        # Satellite imagery texture
+<GAZEBO_WORLD_PATH>/
+├──world_name.sdf
+├──world_name_1.sdf
+├──world_name_2.sdf
+
 ```
 
 ## 🚀 Run Gazebo World Generator
