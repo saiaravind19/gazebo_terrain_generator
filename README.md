@@ -11,13 +11,13 @@ A super easy-to-use tool for generate 3D Gazebo terrain using real-world elevati
   </a>
 </p>
 
-## ✨ Features
+## Features
 
-- **🌍 Real-World Terrain Generation**: Generate 3D Gazebo worlds using actual elevation data and satellite images of any location on Earth.
-- **🎯 Configurable Spawn Location**: Change the spawn location using interactive UI marker within the region of interest
-- **⚙️ Configurable Output**: Flexible output paths via environment variables for different deployment scenarios
-- **🔧 Customizable Resolution**: Adjustable tile resolution.
-- **📦 Complete World Generation**: Generates the entire model with no hassle out of the box
+- **Real-World Terrain Generation**: Generate 3D Gazebo worlds using actual elevation data and satellite images of any location on Earth.
+- **Configurable Spawn Location**: Change the spawn location using interactive UI marker within the region of interest
+- **Configurable Output**: Flexible output paths via environment variables for different deployment scenarios
+- **Customizable Resolution**: Adjustable tile resolution.
+- **Complete World Generation**: Generates the entire model with no hassle out of the box
 
 ## Supported and Tested Stack
 
