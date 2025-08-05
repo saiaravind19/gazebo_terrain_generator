@@ -28,25 +28,11 @@ A super easy-to-use tool for generate 3D Gazebo terrain using real-world elevati
 
 It's recommended to use a virtual environment to avoid dependency conflicts:
 
-<details>
-<summary><strong>For Linux/macOS</strong></summary>
-
 ```bash
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv terrain_generator
+source terrain_generator/bin/activate
 ```
 
-</details>
-
-<details>
-<summary><strong>For Windows</strong></summary>
-
-```bash
-python -m venv venv
-venv\Scripts\activate
-```
-
-</details>
 
 ### Install Requirements
 
@@ -95,23 +81,23 @@ Generated model follow this structure:
 
 ## 🚀 Run Gazebo World Generator
 
-1. **Start the Application**:
+1. Navigate to **gazebo_terrian_generator** and start the applciation.
     ```bash
-    cd gazebo_terrian_generator/scripts
+    source terrain_generator/bin/activate
     python server.py
     ```
 
-2. **Access the Web Interface**: 
+2. Access the Web Interface: 
    Open your web browser and navigate to `http://localhost:8080`
 
-3. **Generate Your World**:
+3. Generate Your World:
    - Search for any location on Earth
    - Draw a rectangular region of interest
    - Place launch pad marker at desired spawn location
    - Configure settings (zoom level, map source)
    - Click "Generate Terrain" to create your world
 
-4. **Output Location**: 
+4. Output Location: 
    Generated worlds are saved to the configured path (see Environment Variables section above)
 
 ## 🏁 Spawning Gazebo Worlds

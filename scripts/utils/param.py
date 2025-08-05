@@ -7,7 +7,7 @@ class globalParam:
     OUTPUT_BASE_PATH            = str(Path(__file__).resolve().parents[2] / 'output')
 
     GAZEBO_MODEL_PATH           = os.path.abspath(os.path.expanduser(os.getenv('GAZEBO_MODEL_PATH', os.path.join(OUTPUT_BASE_PATH,'gazebo_terrian'))))  
-    GAZEBO_WORLD_PATH           = os.path.abspath(os.path.expanduser(os.getenv('GAZEBO_WORLD_PATH', os.path.join(OUTPUT_BASE_PATH,'gazebo_terrian/worlds'))))  
+    GAZEBO_WORLD_PATH           = os.path.abspath(os.path.expanduser(os.getenv('GAZEBO_WORLD_PATH', os.path.join(OUTPUT_BASE_PATH,'gazebo_terrian/worlds',))))  
     DEM_RESOLUTION              = 13
 
 
