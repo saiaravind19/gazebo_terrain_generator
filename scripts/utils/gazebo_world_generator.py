@@ -221,7 +221,7 @@ class HeightmapGenerator(ConcatImage):
 
         # Convert OpenCV image to PIL Image and save as TIFF
         self.heightmap = Image.fromarray(resized_map, mode='L')  # 'L' for 8-bit grayscale
-        self.heightmap.save(os.path.join(globalParam.GAZEBO_WORLD_PATH, model, 'textures', model+'_height_map.tif'), format="TIFF")
+        self.heightmap.save(os.path.join(globalParam.GAZEBO_MODEL_PATH, model, 'textures', model+'_height_map.tif'), format="TIFF")
 
 
 
@@ -249,7 +249,7 @@ class OrthoGenerator(ConcatImage):
  
         image_dir = os.path.join(path, str(zoomlevel))
         # Check and create necessary directories
-        maptile_utiles.dir_check(os.path.join(globalParam.GAZEBO_WORLD_PATH, model_name, 'textures'),remove_existing=True)
+        maptile_utiles.dir_check(os.path.join(globalParam.GAZEBO_MODEL_PATH, model_name, 'textures'),remove_existing=True)
         maptile_utiles.dir_check(os.path.join(globalParam.TEMPORARY_SATELLITE_IMAGE, model_name),remove_existing=True)
         bound_array = boundaries.split(',')
         tile_boundaries = maptile_utiles.get_max_tilenumber(bound_array,zoomlevel)
@@ -279,7 +279,7 @@ class OrthoGenerator(ConcatImage):
 
         # Save the stitched image
         compression_params = [cv2.IMWRITE_PNG_COMPRESSION, 9]
-        cv2.imwrite(os.path.join(globalParam.GAZEBO_WORLD_PATH, model_name, 'textures', model_name+'_aerial.png'), stitched_image, compression_params)
+        cv2.imwrite(os.path.join(globalParam.GAZEBO_MODEL_PATH, model_name, 'textures', model_name+'_aerial.png'), stitched_image, compression_params)
 
 
 
@@ -382,7 +382,7 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
             None
         """
         template = FileWriter.read_template(os.path.join(globalParam.TEMPLATE_DIR_PATH ,'config_temp.txt'))
-        FileWriter.write_config_file(template, self.model_name, os.path.join(globalParam.GAZEBO_WORLD_PATH, self.model_name))
+        FileWriter.write_config_file(template, self.model_name, os.path.join(globalParam.GAZEBO_MODEL_PATH, self.model_name))
     
     def gen_world(self) -> None:
         """
@@ -515,8 +515,12 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
             # Generate SDF files for the world
             self.gen_config()
             self.gen_sdf(size_x,size_y,size_z,pose_x,posey,posez)
+            maptile_utiles.dir_check(globalParam.GAZEBO_WORLD_PATH)
+
             self.gen_world()
-            print("Generate gazebo world files are save to : ",os.path.join(globalParam.GAZEBO_MODEL_PATH,os.path.basename(self.tile_path)))
+            print("Generate gazebo model files are save to : ",os.path.join(globalParam.GAZEBO_MODEL_PATH,os.path.basename(self.tile_path)))
+            print("Generate gazebo world file are save to : ",globalParam.GAZEBO_WORLD_PATH)
+
             print("Gazebo world files generated successfully")
 
             shutil.rmtree(globalParam.TEMP_PATH)
