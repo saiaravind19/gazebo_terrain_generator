@@ -38,7 +38,7 @@ class FileWriter:
 		return directory
 
 	@staticmethod
-	def addMetadata(lock, path, file, name, description, format, bounds, center,area, zoom_level, profile="mercator", tileSize=256):
+	def addMetadata(lock, path, file, name, description, format, bounds, center, area, zoom_level, profile="mercator", tileSize=256, launchLocation=None):
 		'''
         Add metadata to the specified path as a JSON file.
 
@@ -75,8 +75,8 @@ class FileWriter:
 			("generator", "EliteMapper by Visor Dynamics"),
 			("type", "overlay"),
 			("attribution", "EliteMapper by Visor Dynamics"),
+			("launch_location", ','.join(map(str, launchLocation)))
 		]
-		
 		with open(path + "/metadata.json", 'w+') as jsonFile:
 			json.dump(dict(data), jsonFile)
 
@@ -190,7 +190,7 @@ class FileWriter:
 		target.close()
 	
 	@staticmethod
-	def write_sdf_file(sdf_template,model_name,  size_x, size_y, size_z,origin_height,path):
+	def write_sdf_file(sdf_template,model_name,  size_x, size_y, size_z,pose_x,pose_y,origin_height,path):
 		'''
         Write an SDF file with the provided template and model details.
 
@@ -208,7 +208,7 @@ class FileWriter:
 
 		'''
 		
-		heightmap = model_name+'_height_map.png'
+		heightmap = model_name+'_height_map.tif'
 		aerialimg = model_name+'_aerial.png'
     	# Filling in content
 		sdf_template = sdf_template.replace("$MODEL$", str(model_name))
@@ -217,6 +217,9 @@ class FileWriter:
 		sdf_template = sdf_template.replace("$SIZEX$", str(size_x))
 		sdf_template = sdf_template.replace("$SIZEY$", str(size_y))
 		sdf_template = sdf_template.replace("$SIZEZ$", str(size_z))
+		
+		sdf_template = sdf_template.replace("$POSX$",str(pose_x))
+		sdf_template = sdf_template.replace("$POSY$",str(pose_y))
 		sdf_template = sdf_template.replace("$POSZ$",str(origin_height))
 		sdf_template = sdf_template.replace("$AERIALMAP$",str(aerialimg))
 		sdf_template = sdf_template.replace("$HEIGHTMAP$",str(heightmap))
@@ -232,7 +235,7 @@ class FileWriter:
 
 		
 	@staticmethod
-	def write_world_file(sdf_template,model_name,origin_lat,origin_long,path,origin_height):
+	def write_world_file(sdf_template,model_name,launch_lat,launch_lon,path,origin_height,helipad_exist):
 		'''
 		Write a world file with the provided template and model details.
 
@@ -242,21 +245,26 @@ class FileWriter:
             origin_lat (float): The origin latitude.
             origin_long (float): The origin longitude.
             path (str): The directory path to save the world file.
-
+			helipad_exist (bool): Flag indicating if the helipad model locally or not.
         Returns:
             None
 
 		'''
     	# Filling in content
 		sdf_template = sdf_template.replace("$MODELNAME$", model_name)
-		sdf_template = sdf_template.replace("$ORIGIN_LAT$", str(origin_lat))
-		sdf_template = sdf_template.replace("$ORIGIN_LONG$", str(origin_long))
+		sdf_template = sdf_template.replace("$ORIGIN_LAT$", str(launch_lat))
+		sdf_template = sdf_template.replace("$ORIGIN_LONG$", str(launch_lon))
 		sdf_template = sdf_template.replace("$ORIGIN_ELEVATION$", str(origin_height))
-
-    	# Ensure results are a string
-		sdf_content = str(sdf_template)
+		
     	# Open file
-		target = open(os.path.join(path,model_name+".world"), "w")
+		if helipad_exist:
+			sdf_template = sdf_template.replace("$HELIPAD$", str("model://helipad"))
+		else:
+			sdf_template = sdf_template.replace("$HELIPAD$", globalParam.HELIPAD_MODEL)
+    	
+		# Ensure results are a string
+		sdf_content = str(sdf_template)
+		target = open(os.path.join(path,model_name+".sdf"), "w")
 
     	# Write to model.sdf
 		target.write(sdf_content)

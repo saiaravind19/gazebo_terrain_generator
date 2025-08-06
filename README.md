@@ -1,6 +1,9 @@
-# Gazebo Terrain Generator
+# Gazebo Terrain Generator  [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/saiaravind19/gazebo_terrain_generator) 
 
-A super easy-to-use tool for generating 3D Gazebo terrain.
+
+
+A super easy-to-use tool for generate 3D Gazebo terrain using real-world elevation and satellite data.
+
 
 <p align="center">
   <a href="https://www.youtube.com/watch?v=pxL2UF9xl_w">
@@ -8,91 +11,126 @@ A super easy-to-use tool for generating 3D Gazebo terrain.
   </a>
 </p>
 
+## Features
 
+- **Real-World Terrain Generation**: Generate 3D Gazebo worlds using actual elevation data and satellite images of any location on Earth.
+- **Configurable Spawn Location**: Change the spawn location using interactive UI marker within the region of interest
+- **Configurable Output**: Flexible output paths via environment variables for different deployment scenarios
+- **Customizable Resolution**: Adjustable tile resolution.
+- **Complete World Generation**: Generates the entire model with no hassle out of the box
 
+## Supported and Tested Stack
+
+- **[Gazebo Harmonic](https://gazebosim.org/docs/harmonic/install_ubuntu/)**
 ## 🛠️ Setup Instructions
 
-### 1. Create and Activate Virtual Environment (Recommended)
+### Create and Activate Virtual Environment (Recommended)
 
 It's recommended to use a virtual environment to avoid dependency conflicts:
 
-<details>
-<summary><strong>For Linux/macOS</strong></summary>
-
 ```bash
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv terrain_generator
+source terrain_generator/bin/activate
 ```
 
-</details>
 
-<details>
-<summary><strong>For Windows</strong></summary>
-
-```bash
-python -m venv venv
-venv\Scripts\activate
-```
-
-</details>
-
-### 2. Install Requirements
+### Install Requirements
 
 Make sure your virtual environment is active, then install all required Python packages using:
+  ```bash
+  pip install -r requirements.txt
+  ```
+
+## ⚙️ Configuration
+
+### Environment Variables
+
+You can customize where Gazebo Models and World are saved using environment variables:
 
 ```bash
-pip install -r requirements.txt
+export GAZEBO_MODEL_PATH="~/Desktop/gazebo_models"
+export GAZEBO_WORLD_PATH="~/Desktop/gazebo_models/worlds"
+
 ```
 
+**Default Location**: If no environment variable is set, worlds are saved to:
+```
+Models saved in **~/gazebo_terrian_generator/output/gazebo_terrian/**
+World files in **~/gazebo_terrian_generator/output/gazebo_terrian/worlds**
 
-## 3. Run Gazebo world Generator
-1. Navigate to the `gazebo_terrian_generator` repository:
+```
 
-   ```bash
-   cd gazebo_terrian_generator/scripts
-   python server.py
-   ```
+### File Structure
 
-2. To access application open up your web browser and navigate to `http://localhost:8080`.
-3. Gazebo world generated are stored inside `output/gazebo_terrian/` by default. Feel free to change the path defined in `scripts/utils/param.py` as per you choice.
+Generated model follow this structure:
+```
+<GAZEBO_MODEL_PATH>/
+├── world_name/
+│   ├── model.sdf              # Gazebo model definition
+│   ├── model.config           # Model configuration
+│   ├── world_name.sdf         # Gazebo world file
+│   └── textures/
+│       ├── world_name_height_map.tif    # Elevation heightmap
+│       └── world_name_aerial.png        # Satellite imagery texture
+<GAZEBO_WORLD_PATH>/
+├──world_name.sdf
+├──world_name_1.sdf
+├──world_name_2.sdf
 
-### 4. Spawning the gazebo world
-1. Export gazebo resource path based on your gazebo version. Use the table below as reference.
+```
 
-| Gazebo Version |  Resource Path Variable(s)|
-|----------------|---------------------------|
-| **Ignition** and later | `export IGN_GAZEBO_RESOURCE_PATH=$IGN_GAZEBO_RESOURCE_PATH:~/<your model directory path>` |
-| **Harmonic**    | `export GZ_SIM_RESOURCE_PATH=$GZ_SIM_RESOURCE_PATH:~/<your model path here>` |
+## 🚀 Run Gazebo World Generator
+
+1. Navigate to **gazebo_terrian_generator** and start the applciation.
+    ```bash
+    source terrain_generator/bin/activate
+    python server.py
+    ```
+
+2. Access the Web Interface: 
+   Open your web browser and navigate to `http://localhost:8080`
+
+3. Generate Your World:
+   - Search for any location on Earth
+   - Draw a rectangular region of interest
+   - Place launch pad marker at desired spawn location
+   - Configure settings (zoom level, map source)
+   - Click "Generate Terrain" to create your world
+
+4. Output Location: 
+   Generated worlds are saved to the configured path (see Environment Variables section above)
+
+## 🏁 Spawning Gazebo Worlds
+
+1. **Export the gazebo model path**:
+    ```bash
+    export GZ_SIM_RESOURCE_PATH=$GZ_SIM_RESOURCE_PATH:<path_to_your_gazebo_worlds>
+    ```
+
+2. **Run Gazebo with your world**:
+    ```bash
+    gz sim your_world_name/your_world_name.sdf
+    ```
+
+**Note**: Replace `<path_to_your_gazebo_worlds>` with the actual path where your worlds are saved.
 
 
+## 📋 Sample Worlds Example
 
-2. Run Gazebo with the required world file.
+Test the installation with provided sample worlds:
 
-| Gazebo Version |  Resource Path Variable(s)|
-|----------------|---------------------------|
-| **Ignition** and later | `ign gazbeo "<path of your  world file>` |
-| **Harmonic**    |  `gz sim <path of your  world file file>` |
+1. **Export the sample gazebo model path**:
+    ```bash
+    export GZ_SIM_RESOURCE_PATH=$GZ_SIM_RESOURCE_PATH:~/gazebo_terrian_generator/sample_worlds
+    ```
 
-**Note:** Replace path with your actual path of the .world.
+2. **Launch sample world**:
+    ```bash
+    gz sim prayag/prayag.sdf
+    ```
 
-
-## Spawing sample worlds Example: 
-
-1. Export the gazebo model path
-
-| Gazebo Version |  Resource Path Variable(s)|
-|----------------|---------------------------|
-| **Ignition** and later | `export IGN_GAZEBO_RESOURCE_PATH=$IGN_GAZEBO_RESOURCE_PATH:~/gazebo_terrian_generator/sample_worlds` |
-| **Harmonic**    | `export GZ_SIM_RESOURCE_PATH=$GZ_SIM_RESOURCE_PATH:~/gazebo_terrian_generator/sample_worlds` |
-
-
-2. Spawing gazebo world.
-
-| Gazebo Version |  Resource Path Variable(s)|
-|----------------|---------------------------|
-| **Ignition** and later | `ign gazebo prayag/prayag.world` |
-| **Harmonic**    |  `gz sim prayag/prayag.world` |
-
+## 🔑 MapBox API Key
+A free api key is being used in the repo if it gets limited then please feel free to create your own API key from official [MapBox's website](https://www.mapbox.com/) and replace it in the [`configuration file`](scripts/utils/param.py)
 
 ## Important Disclaimer
 
@@ -101,3 +139,8 @@ Downloading map tiles is subject to the terms and conditions of the tile provide
 ## License
 
 This project uses work of [Ali Ashraf](https://github.com/AliFlux/MapTilesDownloader).
+
+## Reference
+- [Gazebo Heightmap](https://github.com/AS4SR/general_info/wiki/Creating-Heightmaps-for-Gazebo
+)
+- [Mapbox Dem](https://docs.mapbox.com/data/tilesets/reference/mapbox-terrain-dem-v1/)

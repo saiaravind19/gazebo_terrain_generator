@@ -1,5 +1,6 @@
-Pillow
-geopy
-opencv-python
-flask
-mercantile 
+geopy==2.4.1
+opencv-python==4.11.0.86
+flask>=2.0.1
+mercantile==1.2.0
+requests>=2.25.1
+pillow>=9.0.0
