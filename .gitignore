@@ -4,3 +4,5 @@ output/
 terrain_generator/
 temp/
 *.pyc
+node_modules
+mapgen

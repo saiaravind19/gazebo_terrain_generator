@@ -39,7 +39,6 @@ class ConcatImage:
 
         # Filter and sort X directories
         x_dirs = sorted([d for d in dir_list if min_x <= int(d) <= max_x], key=lambda x: int(x))
-
         return x_dirs
        
     def process_column_image(self, dir_name, image_dir, tile_boundaries, temp_output_dir):
