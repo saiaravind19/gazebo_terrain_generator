@@ -1,0 +1,42 @@
+<?xml version="1.0" ?>
+<sdf version="1.9">
+  <world name="prayag">
+    <gravity>0 0 -9.8066</gravity>
+
+    <spherical_coordinates>
+      <surface_model>EARTH_WGS84</surface_model>
+      <latitude_deg>30.28723457907561</latitude_deg>
+      <longitude_deg>78.9810562133789</longitude_deg>
+      <elevation>621.6000000000004</elevation>
+    </spherical_coordinates>
+
+        
+    <physics name="1ms" type="ignored">
+      <dart>
+        <!-- Heightmaps behave better with the bullet collision detector -->
+        <collision_detector>bullet</collision_detector>
+      </dart>
+    </physics>
+
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <attenuation>
+        <range>1000</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+
+    <!-- Environment model -->
+    <include>
+      <uri>model://prayag</uri>
+    </include>
+
+  </world>
+</sdf>

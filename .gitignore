@@ -1,5 +1,6 @@
 scripts/utils/temp/
 
 output/
+terrain_generator/
 temp/
 *.pyc

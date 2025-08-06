@@ -10,9 +10,10 @@ import mimetypes
 from utils.demTilesDownloader import download_dem_data
 from utils.file_writer import FileWriter
 from utils.utils import Utils
-from utils.gazebo_world_generator import generate_gazebo_world
+from utils.gazebo_world_generator import GazeboTerrianGenerator
 from utils.maptile_utils import maptile_utiles
 from utils.param import globalParam
+import requests
 
 app = Flask(__name__)
 lock = threading.Lock()
@@ -27,26 +28,50 @@ def random_string():
 
 	return uuid.uuid4().hex.upper()[0:6]
 
-
-
-
 def process_end_download(bounds, zoom_level, outputDirectory, outputFile, filePath):
-    global task_status
+	global task_status
+	try:
+		task_status["status"] = "in_progress"
+	 	#Perform the long-running task
+		FileWriter.close(lock, os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory), filePath, zoom_level)
+		true_boundaries = maptile_utiles.get_true_boundaries(bounds, zoom_level)
+		download_dem_data(true_boundaries, os.path.join(globalParam.OUTPUT_BASE_PATH, "dem"))
+		orthodir_path = os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory)
+		terrian_generator = GazeboTerrianGenerator(orthodir_path)
+		terrian_generator.generate_gazebo_world()
+		task_status["status"] = "completed"
+		print("Gazebo world generation completed successfully.")
+
+	except Exception as e:
+		task_status["status"] = "failed"
+		print(f"Error during processing: {e}")
+
+
+def validate_mapbox_key(api_key):
     try:
-        task_status["status"] = "in_progress"
-
-        # Perform the long-running task
-        FileWriter.close(lock, os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory), filePath, zoom_level)
-        true_boundaries = maptile_utiles.get_true_boundaries(bounds, zoom_level)
-        download_dem_data(true_boundaries, os.path.join(globalParam.OUTPUT_BASE_PATH, "dem"))
-        orthodir_path = os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory)
-        generate_gazebo_world(orthodir_path)
-
-        task_status["status"] = "completed"
-        print("Gazebo world generation completed successfully.")
+        url = f"https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/0,0,1/1x1?access_token={api_key}"
+        response = requests.get(url, timeout=5)  # Add timeout
+        
+        if response.status_code == 200:
+            print("Mapbox API key is validated successfully.")
+            return True
+        elif response.status_code == 401:
+            print("Invalid Mapbox API key.")
+            return False
+        else:
+            print(f"Unexpected response: {response.status_code}")
+            print(response.text)
+            return False
+    except requests.exceptions.ConnectionError:
+        print(" Cannot validate Mapbox API key - no internet connection.")
+        return False  
+    except requests.exceptions.Timeout:
+        print("Mapbox API validation timed out.")
+        return False  
     except Exception as e:
-        task_status["status"] = "failed"
-        print(f"Error during processing: {e}")
+        print(f"Error validating Mapbox API key: {e}")
+        return False 
+
 
 @app.route('/task-status', methods=['GET'])
 def task_status_endpoint():
@@ -66,8 +91,7 @@ def download_tile():
 	timestamp = int(postvars['timestamp'])
 	outputDirectory = str(postvars['outputDirectory'])
 	outputFile = str(postvars['outputFile'])
-	outputType = str(postvars['outputType'])
-	outputScale = int(postvars['outputScale'])
+	outputScale = 1
 	source = str(postvars['source'])
 
 	replaceMap = {
@@ -77,7 +101,6 @@ def download_tile():
 		"quad": quad,
 		"timestamp": str(timestamp),
 	}
-
 	for key, value in replaceMap.items():
 		outputDirectory = outputDirectory.replace(f"{{{key}}}", value)
 		outputFile = outputFile.replace(f"{{{key}}}", value)
@@ -90,7 +113,7 @@ def download_tile():
 		result["message"] = 'Tile already exists'
 	else:
 		tempFile = random_string() + ".jpg"
-		tempFilePath = os.path.join("temp", tempFile)
+		tempFilePath = os.path.join(globalParam.TEMP_PATH, tempFile)
 		result["code"] = Utils.downloadFileScaled(source, tempFilePath, x, y, z, outputScale)
 
 		if os.path.isfile(tempFilePath):
@@ -108,8 +131,7 @@ def download_tile():
 def start_download():
 
 	postvars = request.form
-	outputType = postvars['outputType']
-	outputScale = int(postvars['outputScale'])
+	outputScale = 1
 	outputDirectory = postvars['outputDirectory']
 	outputFile = postvars['outputFile']
 	zoom_level = int(postvars['maxZoom'])
@@ -117,6 +139,7 @@ def start_download():
 	bounds = list(map(float, postvars['bounds'].split(",")))
 	center = list(map(float, postvars['center'].split(",")))
 	area_rect = postvars['area']
+	launchLocation = list(map(float, postvars['launchLocation'].split(",")))
 
 	outputDirectory = outputDirectory.replace("{timestamp}", str(timestamp))
 	outputFile = outputFile.replace("{timestamp}", str(timestamp))
@@ -125,7 +148,7 @@ def start_download():
 	FileWriter.addMetadata(
 		lock, os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory), filePath, outputFile,
 		"Map Tiles Downloader via AliFlux", "jpg", bounds, center, area_rect,
-		zoom_level, "mercator", 256 * outputScale
+		zoom_level, "mercator", 256 * outputScale, launchLocation=launchLocation
 	)
 	global task_status
 	task_status = {"status": "idle"} 
@@ -134,14 +157,11 @@ def start_download():
 @app.route('/end-download', methods=['POST'])
 def end_download():
 	postvars = request.form
-	outputType = postvars['outputType']
-	outputScale = int(postvars['outputScale'])
 	outputDirectory = postvars['outputDirectory']
 	outputFile = postvars['outputFile']
 	zoom_level = int(postvars['maxZoom'])
 	timestamp = int(postvars['timestamp'])
 	bounds = list(map(float, postvars['bounds'].split(",")))
-	center = list(map(float, postvars['center'].split(",")))
 
 	outputDirectory = outputDirectory.replace("{timestamp}", str(timestamp))
 	outputFile = outputFile.replace("{timestamp}", str(timestamp))
@@ -162,5 +182,8 @@ def serve_static(path):
 	return send_from_directory(file_dir, path, mimetype=mime_type)
 
 if __name__ == '__main__':
+	
+	if not validate_mapbox_key(globalParam.MAPBOX_API_KEY):
+		exit(1)
 	print("Starting Flask server...")
 	app.run(host='0.0.0.0', port=8080, threaded=True)

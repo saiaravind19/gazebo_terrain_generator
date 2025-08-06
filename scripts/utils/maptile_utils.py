@@ -100,12 +100,13 @@ class maptile_utiles:
         return tile.x, tile.y
 
     @staticmethod
-    def dir_check(path: str) -> None:
+    def dir_check(path: str, remove_existing: bool = False) -> None:
         """
         Check directory existence and create if not exists.
 
         Args:
             path (str): Path to directory.
+            remove_existing (bool): If True, remove existing directory before creating a new one.
 
         Returns:
             None
@@ -113,6 +114,6 @@ class maptile_utiles:
 
         if not os.path.exists(path):
             os.makedirs(path)
-        else:
+        elif remove_existing == True:
             shutil.rmtree(path)
             os.makedirs(path)

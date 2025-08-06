@@ -124,6 +124,152 @@ $(function() {
 
 		map.on('draw.create', function (e) {
 			M.Toast.dismissAll();
+			if (e.features[0].geometry.type === 'Polygon') {
+				var coordinates = e.features[0].geometry.coordinates[0];
+				var originalBounds = coordinates.reduce(function(bounds, coord) {
+					return [
+						Math.min(bounds[0], coord[0]), // west
+						Math.min(bounds[1], coord[1]), // south
+						Math.max(bounds[2], coord[0]), // east
+						Math.max(bounds[3], coord[1])  // north
+					];
+				}, [Infinity, Infinity, -Infinity, -Infinity]);
+
+				// Get current zoom level for tile calculations
+				var zoomLevel = getMaxZoom();
+				
+				// Convert bounds to corners following Python logic
+				var boundArray = originalBounds;
+				
+				// Create corner coordinates (lat, lon) as in Python
+				var sw = [boundArray[1], boundArray[0]]; // (south, west)
+				var nw = [boundArray[3], boundArray[0]]; // (north, west)
+				var ne = [boundArray[3], boundArray[2]]; // (north, east)
+				var se = [boundArray[1], boundArray[2]]; // (south, east)
+				
+				// Convert to tile coordinates
+				var sw_tile_x = long2tile(sw[1], zoomLevel);
+				var sw_tile_y = lat2tile(sw[0], zoomLevel);
+				var nw_tile_x = long2tile(nw[1], zoomLevel);
+				var nw_tile_y = lat2tile(nw[0], zoomLevel);
+				var ne_tile_x = long2tile(ne[1], zoomLevel);
+				var ne_tile_y = lat2tile(ne[0], zoomLevel);
+				var se_tile_x = long2tile(se[1], zoomLevel);
+				var se_tile_y = lat2tile(se[0], zoomLevel);
+				
+				// Calculate height and width in tiles (following Python logic)
+				var height = Math.abs(sw_tile_y - nw_tile_y);
+				var width = Math.abs(ne_tile_x - nw_tile_x);
+				
+				console.log("Original bounds:", originalBounds);
+				console.log("Tile coordinates:", {
+					sw: [sw_tile_x, sw_tile_y],
+					nw: [nw_tile_x, nw_tile_y], 
+					ne: [ne_tile_x, ne_tile_y],
+					se: [se_tile_x, se_tile_y]
+				});
+				console.log("Calculated dimensions - width:", width, "height:", height);
+				
+				var tileBounds;
+				if (height !== width) {
+					// Make it square by taking the minimum dimension
+					var squareSize = Math.min(height, width);
+					console.log("Making square with size:", squareSize);
+					
+					// Start from northwest corner and extend square size
+					tileBounds = {
+						"northwest": [nw_tile_x, nw_tile_y],
+						"northeast": [nw_tile_x + squareSize, nw_tile_y],
+						"southwest": [nw_tile_x, nw_tile_y + squareSize],
+						"southeast": [nw_tile_x + squareSize, nw_tile_y + squareSize]
+					};
+				} else {
+					tileBounds = {
+						"northwest": [nw_tile_x, nw_tile_y],
+						"northeast": [ne_tile_x, ne_tile_y],
+						"southwest": [sw_tile_x, sw_tile_y],
+						"southeast": [se_tile_x, se_tile_y]
+					};
+				}
+				
+				console.log("Final tile bounds:", tileBounds);
+				
+				// Convert tile bounds back to geographic coordinates with consistent logic
+				var true_nw = [tile2lat(tileBounds.northwest[1], zoomLevel), tile2long(tileBounds.northwest[0], zoomLevel)]; // (north, west)
+				var true_ne = [tile2lat(tileBounds.northeast[1], zoomLevel), tile2long(tileBounds.northeast[0], zoomLevel)]; // (north, east)
+				var true_sw = [tile2lat(tileBounds.southwest[1], zoomLevel), tile2long(tileBounds.southwest[0], zoomLevel)]; // (south, west)
+				var true_se = [tile2lat(tileBounds.southeast[1], zoomLevel), tile2long(tileBounds.southeast[0], zoomLevel)]; // (south, east)
+				
+				// Create the snapped bounds array [west, south, east, north] - ensure perfect rectangle
+				var snappedBounds = [
+					Math.min(true_nw[1], true_sw[1]), // west (minimum longitude)
+					Math.min(true_sw[0], true_se[0]), // south (minimum latitude)
+					Math.max(true_ne[1], true_se[1]), // east (maximum longitude)
+					Math.max(true_nw[0], true_ne[0])  // north (maximum latitude)
+				];
+				
+				// Create perfectly rectangular coordinates for the polygon
+				var snappedCoordinates = [[
+					[snappedBounds[0], snappedBounds[1]], // SW: [west, south]
+					[snappedBounds[2], snappedBounds[1]], // SE: [east, south]
+					[snappedBounds[2], snappedBounds[3]], // NE: [east, north]
+					[snappedBounds[0], snappedBounds[3]], // NW: [west, north]
+					[snappedBounds[0], snappedBounds[1]]  // SW: close polygon
+				]];
+				
+				// Use a timeout to ensure the feature is fully created before updating
+				setTimeout(function() {
+					var featureId = e.features[0].id;
+					var updatedFeature = {
+						id: featureId,
+						type: 'Feature',
+						geometry: {
+							type: 'Polygon',
+							coordinates: snappedCoordinates
+						},
+						properties: e.features[0].properties
+					};
+					
+					// Update the feature
+					draw.delete(featureId);
+					draw.add(updatedFeature);
+				}, 50);
+				
+				window.launchBounds = snappedBounds;
+				var center = [
+					(snappedBounds[0] + snappedBounds[2]) / 2,
+					(snappedBounds[1] + snappedBounds[3]) / 2
+				];
+				window.launchLocation = center;
+
+				// Store the selected region for later restoration
+				window.selectedRegion = {
+					type: 'Feature',
+					geometry: {
+						type: 'Polygon',
+						coordinates: snappedCoordinates
+					},
+					properties: e.features[0].properties
+				};
+
+				// Remove existing markers if they exist and create new one
+				removeLaunchPadMarker();
+				createLaunchPadMarker();
+
+				// Calculate and show square dimensions
+				var squareTileWidth = Math.abs(tileBounds.northeast[0] - tileBounds.northwest[0]);
+				var squareTileHeight = Math.abs(tileBounds.southwest[1] - tileBounds.northwest[1]);
+				var tilesInSquare = squareTileWidth * squareTileHeight;
+				
+				// Clear any pending messages first
+				M.Toast.dismissAll();
+				
+				// Show success message with details
+				M.toast({
+					html: `Area snapped to a Square (${tilesInSquare} tiles total)`, 
+					displayLength: 4000
+				});
+			}
 		});
 
 		$("#rectangle-draw-button").click(function() {
@@ -137,8 +283,11 @@ $(function() {
 		draw.deleteAll();
 		draw.changeMode('draw_rectangle');
 
+		// Remove markers if they exist
+		removeLaunchPadMarker();
+
 		M.Toast.dismissAll();
-		M.toast({html: 'Click two points on the map to make a rectangle.', displayLength: 7000})
+		M.toast({html: 'Click two points on the map to draw a region', displayLength: 3000})
 	}
 
 	function initializeGridPreview() {
@@ -438,6 +587,9 @@ $(function() {
 				if (status === "completed") {
 					logItemRaw("Gazebo world generated successfully.");
 					$("#stop-button").html("FINISH");
+					
+					// Add the launch pad marker when generation is complete
+					createLaunchPadMarker();
 				} else if (status === "in_progress") {
 					logItemRaw("World Generation Inprogress..");
 					setTimeout(() => pollTaskStatus(), 5000); // Poll every 5 seconds
@@ -470,34 +622,38 @@ $(function() {
 		clearLogs();
 		M.Toast.dismissAll();
 
+		// Remove the launch pad marker when download starts
+		removeLaunchPadMarker();
+
 		var timestamp = Date.now().toString();
 
 		var allTiles = getAllGridTiles();
 		updateProgress(0, allTiles.length);
 
-		var numThreads = parseInt($("#parallel-threads-box").val());
+		var numThreads = parseInt($("#parallel-threads-box").val()) || 4;
 		var outputDirectory = $("#output-directory-box").val();
-		var outputFile = $("#output-file-box").val();
-		var outputType = $("#output-type").val();
-		var outputScale = $("#output-scale").val();
+		var outputFile = "{z}/{x}/{y}.png"; 
+		var outputType = "png"; 
+		var outputScale = "1"; 
 		var source = $("#source-box").val()
 
 		var bounds = getBounds();
 		var area_rect = area();
-		var boundsArray = [[bounds.getSouthWest().lng,bounds.getSouthWest().lat],[bounds.getNorthEast().lng,bounds.getNorthEast().lat]]
-		var centerArray = [bounds.getCenter().lng,bounds.getCenter().lat]
-		
+		var boundsArray = [[bounds.getSouthWest().lng,bounds.getSouthWest().lat],[bounds.getNorthEast().lng,bounds.getNorthEast().lat]];
+		var centerArray = [bounds.getCenter().lng,bounds.getCenter().lat];
+		var launchLocation = window.launchLocation ? window.launchLocation : centerArray;
 		var data = new FormData();
-		data.append('maxZoom', getMaxZoom())
-		data.append('outputDirectory', outputDirectory)
-		data.append('outputFile', outputFile)
-		data.append('outputType', outputType)
-		data.append('outputScale', outputScale)
-		data.append('source', source)
-		data.append('timestamp', timestamp)
-		data.append('bounds', boundsArray.join(","))
-		data.append('center', centerArray.join(","))
-		data.append('area',area_rect)
+		data.append('maxZoom', getMaxZoom());
+		data.append('outputDirectory', outputDirectory);
+		data.append('outputFile', outputFile);
+		data.append('outputType', outputType);
+		data.append('outputScale', outputScale);
+		data.append('source', source);
+		data.append('timestamp', timestamp);
+		data.append('bounds', boundsArray.join(","));
+		data.append('center', centerArray.join(","));
+		data.append('launchLocation', launchLocation.join(","));
+		data.append('area', area_rect);
 
 		var request = await $.ajax({
 			url: "/start-download",
@@ -534,7 +690,8 @@ $(function() {
 			data.append('source', source)
 			data.append('bounds', boundsArray.join(","))
 			data.append('center', centerArray.join(","))
-			data.append('area',area_rect)
+			data.append('launchLocation', launchLocation.join(","))
+			data.append('area', area_rect)
 
 			var request = $.ajax({
 				"url": url,
@@ -598,11 +755,10 @@ $(function() {
 			updateProgress(allTiles.length, allTiles.length);
 			logItemRaw("Starting World Generation");
 			pollTaskStatus(); // Start polling with the task ID
-			$("#stop-button").html("FINISH");
 
 		},
 
-	
+
 	);
 
 
@@ -635,6 +791,33 @@ $(function() {
 	}
 
 	function stopDownloading() {
+		// Check if the process is finished (button shows "FINISH")
+		if ($("#stop-button").html() === "FINISH") {
+			// Process is complete, restore the main view
+			$("#main-sidebar").show();
+			$("#download-sidebar").hide();
+			
+			// Ensure the region selection is visible (if it was removed)
+			if (window.selectedRegion && draw.getAll().features.length === 0) {
+				draw.add(window.selectedRegion);
+			}
+			
+			// Ensure the launch pad marker is visible
+			
+			removeGrid();
+			clearLogs();
+			createLaunchPadMarker();
+
+			// Show completion message
+			M.toast({
+				html: 'Region and launch pad are now visible. Ready for next operation.', 
+				displayLength: 3000
+			});
+			
+			return;
+		}
+		
+		// Otherwise, it's a regular stop operation during download
 		cancellationToken = true;
 
 		for(var i =0 ; i < requests.length; i++) {
@@ -646,11 +829,52 @@ $(function() {
 			}
 		}
 
+
 		$("#main-sidebar").show();
 		$("#download-sidebar").hide();
+
 		removeGrid();
 		clearLogs();
 
+	}
+
+	function createLaunchPadMarker() {
+		// Only create if launch location exists and marker doesn't already exist
+		if (window.launchLocation && !window.centerMarker) {
+			// Add a helipad icon at the center
+			var helipadIcon = document.createElement('div');
+			helipadIcon.className = 'helipad-icon';
+			helipadIcon.style.width = '50px';
+			helipadIcon.style.height = '50px';
+			helipadIcon.style.backgroundImage = 'url(launchpad.svg)';
+			helipadIcon.style.backgroundSize = 'contain';
+			helipadIcon.style.backgroundRepeat = 'no-repeat';
+			helipadIcon.style.backgroundPosition = 'center';
+
+			window.centerMarker = new mapboxgl.Marker({
+				element: helipadIcon,
+				draggable: true
+			})
+			.setLngLat(window.launchLocation)
+			.addTo(map);
+
+			// Constrain the helipad icon within the bounds
+			window.centerMarker.on('dragend', function() {
+				var lngLat = window.centerMarker.getLngLat();
+				var bounds = window.launchBounds;
+				var newLng = Math.min(Math.max(lngLat.lng, bounds[0]), bounds[2]);
+				var newLat = Math.min(Math.max(lngLat.lat, bounds[1]), bounds[3]);
+				window.centerMarker.setLngLat([newLng, newLat]);
+				window.launchLocation = [newLng, newLat];
+			});
+		}
+	}
+
+	function removeLaunchPadMarker() {
+		if (window.centerMarker) {
+			window.centerMarker.remove();
+			window.centerMarker = null;
+		}
 	}
 
 	initializeMaterialize();

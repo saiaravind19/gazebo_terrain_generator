@@ -3,7 +3,7 @@
 <model>
   <name>$MODELNAME$</name>
   <version>1.0</version>
-  <sdf version="1.5">model.sdf</sdf>
+  <sdf version="1.9">model.sdf</sdf>
 
   <author>
     <name>Sai Aravind</name>
