@@ -53,10 +53,10 @@ export GAZEBO_WORLD_PATH="~/Desktop/gazebo_models/worlds"
 
 ```
 
-**Default Location**: If no environment variable is set, worlds are saved to:
+**Default Location**: If no environment variable is set, model and worlds files are saved to:
 ```
-Models saved in **~/gazebo_terrian_generator/output/gazebo_terrian/**
-World files in **~/gazebo_terrian_generator/output/gazebo_terrian/worlds**
+Models saved in **~/gazebo_terrian_generator/output/gazebo_terrain/**
+World files in **~/gazebo_terrian_generator/output/gazebo_terrain/worlds**
 
 ```
 
