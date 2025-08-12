@@ -8,7 +8,7 @@ class globalParam:
 
     GAZEBO_MODEL_PATH           = os.path.abspath(os.path.expanduser(os.getenv('GAZEBO_MODEL_PATH', os.path.join(OUTPUT_BASE_PATH,'gazebo_terrain'))))  
     GAZEBO_WORLD_PATH           = os.path.abspath(os.path.expanduser(os.getenv('GAZEBO_WORLD_PATH', os.path.join(OUTPUT_BASE_PATH,'gazebo_terrain/worlds',))))  
-    DEM_RESOLUTION              = 12
+    DEM_RESOLUTION              = 13
 
 
     DEM_PATH                    = os.path.join(OUTPUT_BASE_PATH, 'dem')
