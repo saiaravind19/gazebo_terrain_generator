@@ -65,17 +65,17 @@ World files in **~/gazebo_terrian_generator/output/gazebo_terrian/worlds**
 Generated model follow this structure:
 ```
 <GAZEBO_MODEL_PATH>/
-├── world_name/
+├── model_name/
 │   ├── model.sdf              # Gazebo model definition
 │   ├── model.config           # Model configuration
-│   ├── world_name.sdf         # Gazebo world file
+│   ├── model_name.sdf         # Gazebo world file
 │   └── textures/
 │       ├── world_name_height_map.tif    # Elevation heightmap
 │       └── world_name_aerial.png        # Satellite imagery texture
 <GAZEBO_WORLD_PATH>/
-├──world_name.sdf
-├──world_name_1.sdf
-├──world_name_2.sdf
+├──model_name.sdf         # Gazebo world file
+├──model_name_1.sdf       # Gazebo world file
+├──model_name_2.sdf       # Gazebo world file
 
 ```
 
