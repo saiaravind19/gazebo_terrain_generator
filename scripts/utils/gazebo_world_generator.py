@@ -155,7 +155,11 @@ class HeightmapGenerator(ConcatImage):
 
         #get the true boundaries as there is a padding non uniform padding added 
         bound_array = boundaries.split(',')
-        tile_number_boundaries = maptile_utiles.get_max_tilenumber(bound_array,globalParam.DEM_RESOLUTION)
+        true_boundaries = maptile_utiles.get_true_boundaries(bound_array,zoomlevel)
+        true_bound_array = [true_boundaries["southwest"][1], true_boundaries["southwest"][0],
+                            true_boundaries["northeast"][1], true_boundaries["northeast"][0]]
+        
+        tile_number_boundaries = maptile_utiles.get_max_tilenumber(true_bound_array,globalParam.DEM_RESOLUTION)
         image_dir = os.path.join(globalParam.DEM_PATH, str(globalParam.DEM_RESOLUTION))
         image_dir_list = self.get_x_tile_directories(image_dir,tile_number_boundaries)
 
@@ -185,14 +189,14 @@ class HeightmapGenerator(ConcatImage):
         
         cv2.imwrite(os.path.join(temp_output_dir, 'height_map.png'),stitched_image)
 
-        true_boundaries = maptile_utiles.get_true_boundaries(bound_array,zoomlevel)
-        tile_boundaries = maptile_utiles.get_true_boundaries(bound_array,globalParam.DEM_RESOLUTION)
+        tile_boundaries = maptile_utiles.get_true_boundaries(true_bound_array,globalParam.DEM_RESOLUTION)
 
         height,width = stitched_image.shape[:2]
         crop_px_cord = self.get_dem_px_bounds(true_boundaries,tile_boundaries,height,width)
         # Crop the image based on the true boundaries needed
         cropped_image = self.crop_dem_image(crop_px_cord,stitched_image) 
         height,width = cropped_image.shape[:2]
+        cv2.imwrite(os.path.join(temp_output_dir, 'cropped_image.png'),cropped_image)
 
         # Convert to float to avoid overflow during calculation
         cropped_image_float = cropped_image.astype(np.float32)
