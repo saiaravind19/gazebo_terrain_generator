@@ -38,5 +38,10 @@
       <uri>model://$MODELNAME$</uri>
     </include>
 
+    <include>
+      <uri>$HELIPAD$</uri>
+    </include>
+
+
   </world>
 </sdf>
