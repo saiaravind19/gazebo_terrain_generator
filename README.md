@@ -6,7 +6,7 @@ A super easy-to-use tool for generate 3D Gazebo terrain using real-world elevati
 
 
 <p align="center">
-  <a href="https://www.youtube.com/watch?v=pxL2UF9xl_w">
+  <a href="https://www.youtube.com/embed/TsV34XBntnY?si=zK0TL7pK_RhsNW05">
     <img src="gif/thumnail.png" alt="Project Demo" width="1050"/>
   </a>
 </p>
@@ -138,7 +138,16 @@ Downloading map tiles is subject to the terms and conditions of the tile provide
 
 ## License
 
-This project uses work of [Ali Ashraf](https://github.com/AliFlux/MapTilesDownloader).
+
+This project is licensed under the **BSD 3-Clause License** - see the [LICENSE](LICENSE) file for details.
+
+### Third-Party Components
+
+This project incorporates work from the following third-party projects:
+
+- **MapTilesDownloader** by [Ali Ashraf](https://github.com/AliFlux/MapTilesDownloader) - Licensed under the MIT License (see [LICENSE-MIT](LICENSE-MIT) file for details)
+
+The MIT-licensed components remain under their original license terms.
 
 ## Reference
 - [Gazebo Heightmap](https://github.com/AS4SR/general_info/wiki/Creating-Heightmaps-for-Gazebo
