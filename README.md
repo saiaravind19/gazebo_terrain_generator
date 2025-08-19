@@ -138,16 +138,11 @@ Downloading map tiles is subject to the terms and conditions of the tile provide
 
 ## License
 
+This project is licensed under the **BSD 3-Clause License**.  
+See the [LICENSE](LICENSE) file for full details.  
 
-This project is licensed under the **BSD 3-Clause License** - see the [LICENSE](LICENSE) file for details.
-
-### Acknowledgment
-
-This project incorporates work from the following project:
-
-- **MapTilesDownloader** by [Ali Ashraf](https://github.com/AliFlux/MapTilesDownloader) - Licensed under the MIT License (see [LICENSE(LICENSE) file for details)
-
-The MIT-licensed components remain under their original license terms.
+Portions of this project are derived from **MapTilesDownloader** by [Ali Ashraf](https://github.com/AliFlux/MapTilesDownloader),  
+which is licensed under the **MIT License**. The MIT-licensed components remain under their original terms.
 
 ## Reference
 - [Gazebo Heightmap](https://github.com/AS4SR/general_info/wiki/Creating-Heightmaps-for-Gazebo
