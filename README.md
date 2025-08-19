@@ -141,11 +141,11 @@ Downloading map tiles is subject to the terms and conditions of the tile provide
 
 This project is licensed under the **BSD 3-Clause License** - see the [LICENSE](LICENSE) file for details.
 
-### Third-Party Components
+### Acknowledgment
 
-This project incorporates work from the following third-party projects:
+This project incorporates work from the following project:
 
-- **MapTilesDownloader** by [Ali Ashraf](https://github.com/AliFlux/MapTilesDownloader) - Licensed under the MIT License (see [LICENSE-MIT](LICENSE-MIT) file for details)
+- **MapTilesDownloader** by [Ali Ashraf](https://github.com/AliFlux/MapTilesDownloader) - Licensed under the MIT License (see [LICENSE(LICENSE) file for details)
 
 The MIT-licensed components remain under their original license terms.
 
