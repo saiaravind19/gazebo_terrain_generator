@@ -84,7 +84,7 @@ Generated model follow this structure:
 1. Navigate to **gazebo_terrian_generator** and start the applciation.
     ```bash
     source terrain_generator/bin/activate
-    python server.py
+    python scripts/server.py
     ```
 
 2. Access the Web Interface: 
