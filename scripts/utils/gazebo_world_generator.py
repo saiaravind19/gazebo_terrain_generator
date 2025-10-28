@@ -352,6 +352,7 @@ class HeightmapGenerator(ConcatImage):
         with open(geojson_path, 'r') as f:
             buildings = json.load(f)
 
+
         min_terrain_height, max_terrain_height = terrain_height_range
         terrain_range = max_terrain_height - min_terrain_height
 
@@ -366,7 +367,6 @@ class HeightmapGenerator(ConcatImage):
             # heightmap_meters[i] = (heightmap[i] / 255.0) * terrain_range + min_terrain_height
             heightmap_meters = (heightmap / 255.0) * terrain_range + min_terrain_height
 
-            building_count = 0
 
             # Process each building feature
             for feature in buildings.get('features', []):
@@ -380,8 +380,6 @@ class HeightmapGenerator(ConcatImage):
                 if height <= 0:
                     continue
 
-                building_count += 1
-
                 # Get the polygon geometry
                 geom = feature.get('geometry')
                 if not geom or geom.get('type') != 'Polygon':
@@ -389,6 +387,17 @@ class HeightmapGenerator(ConcatImage):
 
                 # Create shapely polygon from coordinates
                 polygon = shape(geom)
+
+                # Find the terrain height at the center of the polygon
+                center_lon, center_lat = polygon.centroid.x, polygon.centroid.y
+                center_col, center_row = ~transform * (center_lon, center_lat)
+                center_col = int(np.clip(center_col, 0, heightmap_meters.shape[1] - 1))
+                center_row = int(np.clip(center_row, 0, heightmap_meters.shape[0] - 1))
+                center_terrain_height = heightmap_meters[center_row, center_col]
+
+                # Calculate the building top height (center terrain height + building height)
+                building_top_height = center_terrain_height + height
+
 
                 # Get the bounding box of the polygon in lat/lon
                 minx, miny, maxx, maxy = polygon.bounds
@@ -412,18 +421,14 @@ class HeightmapGenerator(ConcatImage):
                         # Check if this point is inside the building polygon
                         point = ShapelyPoint(lon, lat)
                         if polygon.contains(point):
-                            # Add building height to the terrain height at this location
+                            # Set pixel to building top height (creates flat roof)
                             # Use max() to keep the highest value if polygons overlap
-                            current_height = heightmap_meters[row, col]
-                            new_height = current_height + height
-                            heightmap_meters[row, col] = max(heightmap_meters[row, col], new_height)
+                            heightmap_meters[row, col] = max(heightmap_meters[row, col], building_top_height)
 
-            print(f"Applied heights for {building_count} buildings to heightmap")
 
             # Find new min/max after adding buildings
             new_min = np.min(heightmap_meters)
             new_max = np.max(heightmap_meters)
-            print(f"Height range after buildings: {new_min:.2f}m to {new_max:.2f}m (was {min_terrain_height:.2f}m to {max_terrain_height:.2f}m)")
 
             # Normalize back to 0-255 range
             heightmap_normalized = ((heightmap_meters - new_min) / (new_max - new_min) * 255).astype(np.uint8)
@@ -762,13 +767,13 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
 
         print("Map tiles directory being used : ",self.tile_path)
         if os.path.isfile(os.path.join(self.tile_path, 'metadata.json')) and self.tile_path != '':
+            # Download building data BEFORE generating heightmap so buildings can be integrated
+            self.download_buildings()
+
             self.generate_ortho(self.tile_path,self.zoom_level,self.model_name,self.boundaries)
             print("Satellite image generated successfully")
             self.generate_rgb_heightmap(self.tile_path,self.boundaries,self.zoom_level)
             (size_x,size_y,size_z,pose_x,posey,posez) = self.get_world_dimensions()
-
-            # Download building data for the area
-            self.download_buildings()
 
             # Generate SDF files for the world
             self.gen_config()
