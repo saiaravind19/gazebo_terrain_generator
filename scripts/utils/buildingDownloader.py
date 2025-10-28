@@ -5,6 +5,8 @@ import mercantile
 import mapbox_vector_tile
 from pathlib import Path
 from typing import List, Tuple, Dict, Any
+from shapely.geometry import shape, mapping
+from shapely.ops import unary_union
 from .param import globalParam
 
 class BuildingDownloader:
@@ -168,26 +170,32 @@ class BuildingDownloader:
         tiles = self.get_tiles_for_bounds(bounds, zoom)
         print(f"Downloading building data from {len(tiles)} tiles at zoom {zoom}...")
 
-        all_features = []
-        seen_ids = set()
+        # Use a dict to collect all features by ID so we can merge split buildings
+        features_by_id = {}
 
         for i, (x, y, z) in enumerate(tiles):
             print(f"Downloading tile {i+1}/{len(tiles)}: {z}/{x}/{y}")
             data = self.download_tile(x, y, z)
 
             if data and "features" in data:
-                # Deduplicate buildings that appear in multiple tiles
+                # Collect buildings, merging those with the same ID across tiles
                 for feature in data["features"]:
-                    # Create a unique ID based on geometry
                     feature_id = self._get_feature_id(feature)
-                    if feature_id not in seen_ids:
-                        seen_ids.add(feature_id)
-                        all_features.append(feature)
 
-        # Create final GeoJSON
+                    if feature_id not in features_by_id:
+                        # First time seeing this building
+                        features_by_id[feature_id] = feature
+                    else:
+                        # Building appears in multiple tiles - merge the geometries
+                        features_by_id[feature_id] = self._merge_building_features(
+                            features_by_id[feature_id],
+                            feature
+                        )
+
+        # Create final GeoJSON from merged features
         geojson = {
             "type": "FeatureCollection",
-            "features": all_features
+            "features": list(features_by_id.values())
         }
 
         # Filter to only include buildings with extrude data
@@ -224,6 +232,40 @@ class BuildingDownloader:
             return f"{first_coord[0]:.6f},{first_coord[1]:.6f}"
 
         return str(hash(json.dumps(feature)))
+
+    def _merge_building_features(self, feature1: Dict[str, Any], feature2: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Merge two building features that represent the same building split across tiles.
+
+        Args:
+            feature1: First GeoJSON feature
+            feature2: Second GeoJSON feature (same building, different tile)
+
+        Returns:
+            Merged GeoJSON feature with combined geometry
+        """
+        try:
+            # Convert GeoJSON to shapely geometries
+            geom1 = shape(feature1["geometry"])
+            geom2 = shape(feature2["geometry"])
+
+            # Union the geometries to merge them
+            merged_geom = unary_union([geom1, geom2])
+
+            # Convert back to GeoJSON
+            merged_feature = {
+                "type": "Feature",
+                "id": feature1.get("id"),
+                "geometry": mapping(merged_geom),
+                "properties": feature1.get("properties", {})
+            }
+
+            return merged_feature
+
+        except Exception as e:
+            print(f"Warning: Failed to merge building features: {e}")
+            # If merge fails, return the first feature
+            return feature1
 
     def _filter_extrudable_buildings(self, geojson: Dict[str, Any]) -> Dict[str, Any]:
         """
