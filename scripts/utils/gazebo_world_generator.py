@@ -6,6 +6,7 @@ import numpy as np
 from utils.file_writer import FileWriter
 from utils.param import globalParam
 from utils.maptile_utils import maptile_utiles
+from utils.buildingDownloader import BuildingDownloader
 
 from geopy.distance import geodesic
 from geopy.distance import distance
@@ -13,6 +14,9 @@ from geopy.point import Point
 from multiprocessing import Pool, cpu_count
 from PIL import Image
 import math
+import rasterio
+from rasterio.transform import from_bounds
+from rasterio.crs import CRS
 
 
 
@@ -222,9 +226,37 @@ class HeightmapGenerator(ConcatImage):
 
         model = os.path.basename(model_path)
 
-        # Convert OpenCV image to PIL Image and save as TIFF
+        # Save as georeferenced GeoTIFF using rasterio
+        output_path = os.path.join(globalParam.GAZEBO_MODEL_PATH, model, 'textures', model+'_height_map.tif')
+
+        # Calculate geographic bounds for the GeoTIFF
+        # true_boundaries contains: southwest, southeast, northeast, northwest
+        west = true_boundaries["southwest"][1]  # longitude
+        south = true_boundaries["southwest"][0]  # latitude
+        east = true_boundaries["northeast"][1]  # longitude
+        north = true_boundaries["northeast"][0]  # latitude
+
+        # Create affine transform from geographic bounds
+        transform = from_bounds(west, south, east, north, size, size)
+
+        # Write georeferenced GeoTIFF
+        with rasterio.open(
+            output_path,
+            'w',
+            driver='GTiff',
+            height=size,
+            width=size,
+            count=1,
+            dtype=rasterio.uint8,
+            crs=CRS.from_epsg(4326),  # WGS84 lat/lon
+            transform=transform,
+            compress='lzw'
+        ) as dst:
+            dst.write(resized_map, 1)
+
+        # Load the image back using PIL for Gazebo compatibility
+        # This maintains backward compatibility with the rest of the code
         self.heightmap = Image.fromarray(resized_map, mode='L')  # 'L' for 8-bit grayscale
-        self.heightmap.save(os.path.join(globalParam.GAZEBO_MODEL_PATH, model, 'textures', model+'_height_map.tif'), format="TIFF")
 
 
 
@@ -504,10 +536,58 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
         return self.size_x,self.size_y,self.size_z,pose_x,pose_y,pose_z
 
 
-    def generate_gazebo_world(self): 
+    def download_buildings(self):
+        """
+        Download building data for the terrain area and save as GeoJSON.
+        """
+        try:
+            print("Downloading building data...")
+
+            # Parse boundaries from the stored boundaries string
+            bound_array = self.boundaries.split(',')
+            # bounds format: [west_lon, south_lat, east_lon, north_lat]
+            bounds = [
+                float(bound_array[0]),  # west_lon
+                float(bound_array[1]),  # south_lat
+                float(bound_array[2]),  # east_lon
+                float(bound_array[3])   # north_lat
+            ]
+
+            # Initialize building downloader
+            downloader = BuildingDownloader()
+
+            # Download buildings at zoom 15 (good detail for buildings)
+            building_output_path = os.path.join(
+                globalParam.GAZEBO_MODEL_PATH,
+                self.model_name,
+                'buildings.geojson'
+            )
+
+            buildings_geojson = downloader.download_buildings(
+                bounds=bounds,
+                zoom=15,
+                output_path=building_output_path
+            )
+
+            # Print statistics
+            stats = downloader.get_building_stats(buildings_geojson)
+            print(f"Buildings downloaded: {stats['total_buildings']}")
+            print(f"Buildings with height data: {stats['buildings_with_height']}")
+            if stats['buildings_with_height'] > 0:
+                print(f"Height range: {stats['min_height']:.1f}m - {stats['max_height']:.1f}m")
+                print(f"Average height: {stats['avg_height']:.1f}m")
+
+            return buildings_geojson
+
+        except Exception as e:
+            print(f"Warning: Failed to download building data: {e}")
+            print("Continuing without building data...")
+            return None
+
+    def generate_gazebo_world(self):
         """
             Generate the gazebo world along with world files.
-        """   
+        """
 
         print("Map tiles directory being used : ",self.tile_path)
         if os.path.isfile(os.path.join(self.tile_path, 'metadata.json')) and self.tile_path != '':
@@ -515,6 +595,9 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
             print("Satellite image generated successfully")
             self.generate_rgb_heightmap(self.tile_path,self.boundaries,self.zoom_level)
             (size_x,size_y,size_z,pose_x,posey,posez) = self.get_world_dimensions()
+
+            # Download building data for the area
+            self.download_buildings()
 
             # Generate SDF files for the world
             self.gen_config()
