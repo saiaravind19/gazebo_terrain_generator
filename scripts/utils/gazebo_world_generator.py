@@ -715,6 +715,7 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
     def download_buildings(self):
         """
         Download building data for the terrain area and save as GeoJSON.
+        Uses expanded bounds to capture buildings near the edges.
         """
         try:
             print("Downloading building data...")
@@ -722,12 +723,26 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
             # Parse boundaries from the stored boundaries string
             bound_array = self.boundaries.split(',')
             # bounds format: [west_lon, south_lat, east_lon, north_lat]
-            bounds = [
+            base_bounds = [
                 float(bound_array[0]),  # west_lon
                 float(bound_array[1]),  # south_lat
                 float(bound_array[2]),  # east_lon
                 float(bound_array[3])   # north_lat
             ]
+
+            # Expand bounds by 10% in each direction to capture buildings near edges
+            lon_range = base_bounds[2] - base_bounds[0]
+            lat_range = base_bounds[3] - base_bounds[1]
+            expansion_factor = 0.10  # 10% expansion
+
+            bounds = [
+                base_bounds[0] - lon_range * expansion_factor,  # west_lon (expand west)
+                base_bounds[1] - lat_range * expansion_factor,  # south_lat (expand south)
+                base_bounds[2] + lon_range * expansion_factor,  # east_lon (expand east)
+                base_bounds[3] + lat_range * expansion_factor   # north_lat (expand north)
+            ]
+
+            print(f"Expanded building search area by {expansion_factor*100}%")
 
             # Initialize building downloader
             downloader = BuildingDownloader()
