@@ -1,13 +1,15 @@
 import os
 import json
 import requests
-import mercantile
 import mapbox_vector_tile
 from pathlib import Path
 from typing import List, Tuple, Dict, Any
 from shapely.geometry import shape, mapping
 from shapely.ops import unary_union
-from .param import globalParam
+from utils.param import globalParam
+from utils.maptileUtils import maptile_utiles
+import mercantile
+from multiprocessing import Pool, cpu_count
 
 class BuildingDownloader:
     """
@@ -15,33 +17,16 @@ class BuildingDownloader:
     Uses Mapbox's composite tileset which includes building footprints and heights from OpenStreetMap.
     """
 
-    def __init__(self, api_key: str = None):
+    def __init__(self):
         """
         Initialize the building downloader.
 
         Args:
             api_key: Mapbox API key. If None, uses the global parameter.
         """
-        self.api_key = api_key or globalParam.MAPBOX_API_KEY
-        self.base_url = "https://api.mapbox.com/v4/mapbox.mapbox-streets-v8"
 
-    def get_tiles_for_bounds(self, bounds: List[float], zoom: int = 15) -> List[Tuple[int, int, int]]:
-        """
-        Get list of tile coordinates that cover the given bounds.
-
-        Args:
-            bounds: [west_lon, south_lat, east_lon, north_lat]
-            zoom: Zoom level (higher = more detail, 15-16 recommended for buildings)
-
-        Returns:
-            List of (x, y, z) tile coordinates
-        """
-        tiles = []
-        for tile in mercantile.tiles(bounds[0], bounds[1], bounds[2], bounds[3], zoom):
-            tiles.append((tile.x, tile.y, tile.z))
-        return tiles
-
-    def download_tile(self, x: int, y: int, z: int) -> Dict[str, Any]:
+    @staticmethod
+    def download_tile(zoom : int, x: int, y: int, output_dir: str) -> Dict[str, Any]:
         """
         Download a single vector tile containing building data and convert to GeoJSON.
 
@@ -53,7 +38,9 @@ class BuildingDownloader:
         Returns:
             GeoJSON FeatureCollection with building polygons
         """
-        url = f"{self.base_url}/{z}/{x}/{y}.vector.pbf?access_token={self.api_key}"
+        base_url = "https://api.mapbox.com/v4/mapbox.mapbox-streets-v8"
+
+        url = f"{base_url}/{zoom}/{x}/{y}.vector.pbf?access_token={globalParam.MAPBOX_API_KEY}"
 
         try:
             response = requests.get(url, timeout=30)
@@ -61,18 +48,13 @@ class BuildingDownloader:
 
             # Decode the Protocol Buffer vector tile
             tile_data = mapbox_vector_tile.decode(response.content)
-
+            json.dump(tile_data, open(f"{output_dir}/{y}.json", "w"), indent=2)  # For debugging
             # Convert to GeoJSON
-            return self._tile_to_geojson(tile_data, x, y, z)
-
-        except requests.exceptions.RequestException as e:
-            print(f"Error downloading tile {z}/{x}/{y}: {e}")
-            return {"type": "FeatureCollection", "features": []}
         except Exception as e:
-            print(f"Error decoding tile {z}/{x}/{y}: {e}")
+            print(f"Error while downloading tile {zoom}/{x}/{y}: {e}")
             return {"type": "FeatureCollection", "features": []}
 
-    def _tile_to_geojson(self, tile_data: Dict, x: int, y: int, z: int) -> Dict[str, Any]:
+    def _tile_to_geojson(self, tile_path: str, x: int, y: int, z: int) -> Dict[str, Any]:
         """
         Convert decoded vector tile data to GeoJSON.
 
@@ -87,6 +69,8 @@ class BuildingDownloader:
         """
         features = []
 
+        tile_data = json.load(open(tile_path, "r"))
+        print(f"Loaded tile data from {tile_path}")
         # Check if building layer exists
         if 'building' not in tile_data:
             return {"type": "FeatureCollection", "features": []}
@@ -94,6 +78,7 @@ class BuildingDownloader:
         building_layer = tile_data['building']
         extent = building_layer.get('extent', 4096)
 
+        ############### use map utils pkg for the same ##########
         # Get tile bounds for coordinate conversion
         bounds = mercantile.bounds(x, y, z)
 
@@ -154,27 +139,104 @@ class BuildingDownloader:
             "properties": properties
         }
 
-    def download_buildings(self, bounds: List[float], zoom: int = 15,
-                          output_path: str = None) -> Dict[str, Any]:
+    def download_buildings(
+        self,
+        bound_array: Dict[str, Any],
+        zoom: int = globalParam.DEM_BUILDING_RESOLUTION,
+        output_directory: str = None
+    ) -> Dict[str, Any]:
         """
-        Download all buildings within the given bounds.
+        Download and read all buildings within the given bounds.
 
         Args:
-            bounds: [west_lon, south_lat, east_lon, north_lat]
-            zoom: Zoom level (15-16 recommended for building detail)
-            output_path: Optional path to save the GeoJSON file
+            bound_array: {
+                "northwest": [lat, lon],
+                "southeast": [lat, lon]
+            }
+            zoom: Zoom level
+            output_directory: Directory to store tiles and optional output
 
         Returns:
-            GeoJSON FeatureCollection with all buildings
+            GeoJSON FeatureCollection with merged buildings
         """
-        tiles = self.get_tiles_for_bounds(bounds, zoom)
-        print(f"Downloading building data from {len(tiles)} tiles at zoom {zoom}...")
 
-        # Use a dict to collect all features by ID so we can merge split buildings
         features_by_id = {}
 
+        # ---- Bounds → tile range (SOURCE OF TRUTH) ----
+        nw_lat, nw_lon = map(float, bound_array["northwest"])
+        se_lat, se_lon = map(float, bound_array["southeast"])
+
+        nw_tilex, nw_tiley = maptile_utiles.lat_lon_to_tile(nw_lat, nw_lon, zoom)
+        se_tilex, se_tiley = maptile_utiles.lat_lon_to_tile(se_lat, se_lon, zoom)
+
+        tilex_start, tilex_end = sorted((nw_tilex, se_tilex))
+        tiley_start, tiley_end = sorted((nw_tiley, se_tiley))
+
+        # ---- Directory setup ----
+        maptile_utiles.dir_check(output_directory)
+        zoom_dir = os.path.join(output_directory, str(zoom))
+        maptile_utiles.dir_check(zoom_dir)
+
+        # ---- Prepare download tasks ----
+        tasks = []
+        for x in range(tilex_start, tilex_end + 1):
+            x_dir = os.path.join(zoom_dir, str(x))
+            maptile_utiles.dir_check(x_dir)
+            for y in range(tiley_start, tiley_end + 1):
+                tile_path = os.path.join(x_dir, f"{y}.json")
+                if not os.path.isfile(tile_path):
+                    tasks.append((zoom, x, y, x_dir))
+
+        # ---- Download missing tiles ----
+        if tasks:
+            print(f"Downloading {len(tasks)} tiles…")
+            with Pool(processes=cpu_count()) as pool:
+                pool.starmap(BuildingDownloader.download_tile, tasks)
+
+        # ---- READ tiles ONE BY ONE (important part) ----
+        for x in range(tilex_start, tilex_end + 1):
+            for y in range(tiley_start, tiley_end + 1):
+                tile_path = os.path.join(zoom_dir, str(x), f"{y}.json")
+
+                if not os.path.isfile(tile_path):
+                    print(f"Warning: Missing tile file {tile_path}")
+                    continue  # failed or missing tile
+
+                # Convert tile → GeoJSON
+                tile_geojson = self._tile_to_geojson(tile_path, x, y, zoom)
+                print(f"Processed tile {zoom}/{x}/{y} with {len(tile_geojson.get('features', []))} buildings")
+                if not tile_geojson or "features" not in tile_geojson:
+                    continue
+
+                # ---- Merge buildings by ID ----
+                for feature in tile_geojson["features"]:
+                    feature_id = self._get_feature_id(feature)
+
+                    if feature_id not in features_by_id:
+                        features_by_id[feature_id] = feature
+                    else:
+                        features_by_id[feature_id] = self._merge_building_features(
+                            features_by_id[feature_id],
+                            feature
+                        )
+
+        # ---- Final GeoJSON ----
+        geojson = {
+            "type": "FeatureCollection",
+            "features": list(features_by_id.values())
+        }
+
+        geojson = self._filter_extrudable_buildings(geojson)
+
+        print(f"Downloaded & merged {len(geojson['features'])} unique buildings")
+
+        return geojson
+
+
+        """
         for i, (x, y, z) in enumerate(tiles):
             print(f"Downloading tile {i+1}/{len(tiles)}: {z}/{x}/{y}")
+            #check for tile if already there
             data = self.download_tile(x, y, z)
 
             if data and "features" in data:
@@ -209,8 +271,8 @@ class BuildingDownloader:
             with open(output_path, 'w') as f:
                 json.dump(geojson, f, indent=2)
             print(f"Saved buildings to {output_path}")
-
-        return geojson
+        """
+        #return geojson
 
     def _get_feature_id(self, feature: Dict[str, Any]) -> str:
         """
@@ -327,3 +389,36 @@ class BuildingDownloader:
         }
 
         return stats
+
+
+
+def download_steetmap_data(bound_array, output_directory, model_path, zoom_level: int =globalParam.DEM_BUILDING_RESOLUTION) :
+    #try:
+    downloader = BuildingDownloader()
+    
+    # Download buildings at zoom 15 (good detail for buildings)
+    street_map_path = os.path.join(model_path,
+        'buildings.geojson'
+    )
+    print("passed 1")
+    buildings_geojson = downloader.download_buildings(
+        bound_array=bound_array,
+        zoom=zoom_level,
+        output_directory=output_directory
+    )
+    # Print statistics
+    stats = downloader.get_building_stats(buildings_geojson)
+    # Save to file if path provided
+    if not os.path.exists(model_path):
+        os.makedirs(model_path)
+    with open(street_map_path, 'w') as f:
+        json.dump(buildings_geojson, f, indent=2)
+    print(f"Saved buildings to {street_map_path}")
+    print(f"Buildings downloaded: {stats['total_buildings']}")
+    print(f"Buildings with height data: {stats['buildings_with_height']}")
+    if stats['buildings_with_height'] > 0:
+        print(f"Height range: {stats['min_height']:.1f}m - {stats['max_height']:.1f}m")
+        print(f"Average height: {stats['avg_height']:.1f}m")
+
+    #except Exception as e:
+    #    print(f"Download failed: {e}")

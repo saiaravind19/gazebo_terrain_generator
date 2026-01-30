@@ -8,13 +8,14 @@ import base64
 from pathlib import Path
 import mimetypes
 from utils.demTilesDownloader import download_dem_data
-from utils.file_writer import FileWriter
+from utils.buildingDownloader import download_steetmap_data
+from utils.fileWriter import FileWriter
 from utils.utils import Utils
-from utils.gazebo_world_generator import GazeboTerrianGenerator
-from utils.maptile_utils import maptile_utiles
+from utils.gazeboWorldGenerator import GazeboTerrianGenerator
+from utils.maptileUtils import maptile_utiles
 from utils.param import globalParam
 import requests
-
+import mercantile
 app = Flask(__name__)
 lock = threading.Lock()
 
@@ -28,16 +29,21 @@ def random_string():
 
 	return uuid.uuid4().hex.upper()[0:6]
 
-def process_end_download(bounds, zoom_level, outputDirectory, outputFile, filePath):
+def process_end_download(bounds, zoom_level, outputDirectory, outputFile, filePath, include_buildings=False):
 	global task_status
 	try:
 		task_status["status"] = "in_progress"
-	 	#Perform the long-running task
+		#Perform the long-running task
 		FileWriter.close(lock, os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory), filePath, zoom_level)
 		true_boundaries = maptile_utiles.get_true_boundaries(bounds, zoom_level)
-		download_dem_data(true_boundaries, os.path.join(globalParam.OUTPUT_BASE_PATH, "dem"))
+		download_dem_data(true_boundaries, globalParam.DEM_PATH)
 		orthodir_path = os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory)
-		terrian_generator = GazeboTerrianGenerator(orthodir_path)
+		model_path =  os.path.join(globalParam.GAZEBO_MODEL_PATH,os.path.basename(orthodir_path))
+		if include_buildings:
+			print("Starting building data download...")
+			download_steetmap_data(true_boundaries, globalParam.BUILDING_PATH,model_path)
+
+		terrian_generator = GazeboTerrianGenerator(orthodir_path,include_buildings)
 		terrian_generator.generate_gazebo_world()
 		task_status["status"] = "completed"
 		print("Gazebo world generation completed successfully.")
@@ -140,6 +146,7 @@ def start_download():
 	center = list(map(float, postvars['center'].split(",")))
 	area_rect = postvars['area']
 	launchLocation = list(map(float, postvars['launchLocation'].split(",")))
+	include_buildings = postvars.get('includeBuildlings', 'true').lower() == 'true'
 
 	outputDirectory = outputDirectory.replace("{timestamp}", str(timestamp))
 	outputFile = outputFile.replace("{timestamp}", str(timestamp))
@@ -162,6 +169,7 @@ def end_download():
 	zoom_level = int(postvars['maxZoom'])
 	timestamp = int(postvars['timestamp'])
 	bounds = list(map(float, postvars['bounds'].split(",")))
+	include_buildings = postvars.get('includeBuildlings', 'true').lower() == 'true'
 
 	outputDirectory = outputDirectory.replace("{timestamp}", str(timestamp))
 	outputFile = outputFile.replace("{timestamp}", str(timestamp))
@@ -169,7 +177,7 @@ def end_download():
 
 	FileWriter.close(lock, os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory), filePath, zoom_level)
     # Start the long-running task in a background thread
-	thread = threading.Thread(target=process_end_download, args=(bounds, zoom_level, outputDirectory, outputFile, filePath))
+	thread = threading.Thread(target=process_end_download, args=(bounds, zoom_level, outputDirectory, outputFile, filePath, include_buildings))
 	thread.start()
 
 	return jsonify({"code": 200, "message": "Download ended"})

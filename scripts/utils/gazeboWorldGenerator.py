@@ -3,11 +3,10 @@ import cv2
 import shutil
 import json
 import numpy as np
-from utils.file_writer import FileWriter
+from utils.fileWriter import FileWriter
 from utils.param import globalParam
-from utils.maptile_utils import maptile_utiles
-from utils.buildingDownloader import BuildingDownloader
-
+from utils.maptileUtils import maptile_utiles
+from utils.buildingsGenerator import GeoJSONToDAE
 from geopy.distance import geodesic
 from geopy.distance import distance
 from geopy.point import Point
@@ -15,11 +14,6 @@ from multiprocessing import Pool, cpu_count
 from PIL import Image
 import math
 import rasterio
-from rasterio.transform import from_bounds
-from rasterio.crs import CRS
-from shapely.geometry import shape, Point as ShapelyPoint
-from shapely.ops import transform as shapely_transform
-import pyproj
 
 
 
@@ -116,8 +110,8 @@ class HeightmapGenerator(ConcatImage):
         return crop_px_cord
         
 
-        
-    def get_amsl(self, lat: float, lon: float):
+    @staticmethod
+    def get_amsl(lat: float, lon: float):
         """
         Get the height above mean sea level (AMSL) for a given latitude and longitude.
         Args:
@@ -229,217 +223,14 @@ class HeightmapGenerator(ConcatImage):
 
         model = os.path.basename(model_path)
 
-        # Save as georeferenced GeoTIFF using rasterio
-        output_path = os.path.join(globalParam.GAZEBO_MODEL_PATH, model, 'textures', model+'_height_map.tif')
-
-        # Calculate geographic bounds for the GeoTIFF
-        # true_boundaries contains: southwest, southeast, northeast, northwest
-        west = true_boundaries["southwest"][1]  # longitude
-        south = true_boundaries["southwest"][0]  # latitude
-        east = true_boundaries["northeast"][1]  # longitude
-        north = true_boundaries["northeast"][0]  # latitude
-
-        # Create affine transform from geographic bounds
-        transform = from_bounds(west, south, east, north, size, size)
-
-        # Write georeferenced GeoTIFF
-        with rasterio.open(
-            output_path,
-            'w',
-            driver='GTiff',
-            height=size,
-            width=size,
-            count=1,
-            dtype=rasterio.uint8,
-            crs=CRS.from_epsg(4326),  # WGS84 lat/lon
-            transform=transform,
-            compress='lzw'
-        ) as dst:
-            dst.write(resized_map, 1)
-
-        # Upsample the heightmap by 4x in each direction (16x total pixels)
-        self.upsample_heightmap(output_path, scale_factor=4)
-
-        # Apply building heights from GeoJSON if available
-        # Pass the terrain height range so buildings can be properly scaled
-        building_geojson_path = os.path.join(globalParam.GAZEBO_MODEL_PATH, model, 'buildings.geojson')
-        terrain_height_range = (self.min_height, self.max_height)
-        self.apply_building_heights_to_heightmap(output_path, building_geojson_path, terrain_height_range)
-
-        # Load the modified heightmap back for Gazebo compatibility
-        with rasterio.open(output_path, 'r') as src:
-            final_heightmap = src.read(1)
-            self.heightmap = Image.fromarray(final_heightmap, mode='L')  # 'L' for 8-bit grayscale
-
-
+        # Convert OpenCV image to PIL Image and save as TIFF
+        self.heightmap = Image.fromarray(resized_map, mode='L')  # 'L' for 8-bit grayscale
+        self.heightmap.save(os.path.join(globalParam.GAZEBO_MODEL_PATH, model, 'textures', model+'_height_map.tif'), format="TIFF")
 
     def crop_dem_image(self,px_bound,height_map):
-        cropped_image = height_map[px_bound["northwest"][1]:px_bound["southeast"][1],
+        cropped_image = height_map[px_bound["northwest"][1]:px_bound["southeast"][1], 
                                        px_bound["southwest"][0]:px_bound["northeast"][0]]
         return cropped_image
-
-    def upsample_heightmap(self, tif_path, scale_factor=4):
-        """
-        Upsample a georeferenced TIF heightmap by a given scale factor.
-
-        Args:
-            tif_path (str): Path to the input TIF file
-            scale_factor (int): Factor to scale by (4 means 4x in each direction = 16x total pixels)
-
-        Returns:
-            None (modifies the TIF file in place)
-        """
-        print(f"Upsampling heightmap by {scale_factor}x in each direction ({scale_factor**2}x total pixels)...")
-
-        with rasterio.open(tif_path, 'r') as src:
-            # Read the data
-            data = src.read(1)
-
-            # Get the original metadata
-            meta = src.meta.copy()
-
-            # Calculate new dimensions
-            new_height = data.shape[0] * scale_factor
-            new_width = data.shape[1] * scale_factor
-
-            # Update the transform for the new resolution
-            transform = src.transform
-            new_transform = rasterio.Affine(
-                transform.a / scale_factor,  # pixel width
-                transform.b,
-                transform.c,
-                transform.d,
-                transform.e / scale_factor,  # pixel height (negative)
-                transform.f
-            )
-
-            # Upsample using nearest neighbor to preserve exact values
-            # Each pixel becomes scale_factor x scale_factor pixels
-            upsampled_data = np.repeat(np.repeat(data, scale_factor, axis=0), scale_factor, axis=1)
-
-            # Update metadata
-            meta.update({
-                'height': new_height,
-                'width': new_width,
-                'transform': new_transform
-            })
-
-        # Write the upsampled data back to the same file
-        with rasterio.open(tif_path, 'w', **meta) as dst:
-            dst.write(upsampled_data, 1)
-
-        print(f"Upsampled heightmap from {data.shape[1]}x{data.shape[0]} to {new_width}x{new_height}")
-
-    def apply_building_heights_to_heightmap(self, tif_path, geojson_path, terrain_height_range):
-        """
-        Apply building heights from a GeoJSON file to a georeferenced heightmap TIF.
-
-        Args:
-            tif_path (str): Path to the georeferenced heightmap TIF
-            geojson_path (str): Path to the buildings GeoJSON file
-            terrain_height_range (tuple): (min_height, max_height) of the original terrain in meters
-
-        Returns:
-            None (modifies the TIF file in place)
-        """
-        if not os.path.exists(geojson_path):
-            print(f"Warning: Building GeoJSON file not found at {geojson_path}")
-            return
-
-        print("Applying building heights to heightmap...")
-
-        # Load the GeoJSON
-        with open(geojson_path, 'r') as f:
-            buildings = json.load(f)
-
-
-        min_terrain_height, max_terrain_height = terrain_height_range
-        terrain_range = max_terrain_height - min_terrain_height
-
-        # Open the TIF for reading
-        with rasterio.open(tif_path, 'r') as src:
-            # Read as float for precise calculations
-            heightmap = src.read(1).astype(np.float32)
-            transform = src.transform
-            meta = src.meta.copy()
-
-            # Convert normalized heightmap (0-255) back to actual meters
-            # heightmap_meters[i] = (heightmap[i] / 255.0) * terrain_range + min_terrain_height
-            heightmap_meters = (heightmap / 255.0) * terrain_range + min_terrain_height
-
-
-            # Process each building feature
-            for feature in buildings.get('features', []):
-                properties = feature.get('properties', {})
-
-                # Skip if not a building or no height data
-                if properties.get('type') != 'building':
-                    continue
-
-                height = properties.get('height', 0)
-                if height <= 0:
-                    continue
-
-                # Get the polygon geometry
-                geom = feature.get('geometry')
-                if not geom or geom.get('type') != 'Polygon':
-                    continue
-
-                # Create shapely polygon from coordinates
-                polygon = shape(geom)
-
-                # Find the terrain height at the center of the polygon
-                center_lon, center_lat = polygon.centroid.x, polygon.centroid.y
-                center_col, center_row = ~transform * (center_lon, center_lat)
-                center_col = int(np.clip(center_col, 0, heightmap_meters.shape[1] - 1))
-                center_row = int(np.clip(center_row, 0, heightmap_meters.shape[0] - 1))
-                center_terrain_height = heightmap_meters[center_row, center_col]
-
-                # Calculate the building top height (center terrain height + building height)
-                building_top_height = center_terrain_height + height
-
-
-                # Get the bounding box of the polygon in lat/lon
-                minx, miny, maxx, maxy = polygon.bounds
-
-                # Convert geographic bounds to pixel coordinates
-                ul_col, ul_row = ~transform * (minx, maxy)  # upper left
-                lr_col, lr_row = ~transform * (maxx, miny)  # lower right
-
-                # Ensure pixel coordinates are within heightmap bounds
-                ul_col = max(0, int(np.floor(ul_col)))
-                ul_row = max(0, int(np.floor(ul_row)))
-                lr_col = min(heightmap_meters.shape[1], int(np.ceil(lr_col)))
-                lr_row = min(heightmap_meters.shape[0], int(np.ceil(lr_row)))
-
-                # Process each pixel in the bounding box
-                for row in range(ul_row, lr_row):
-                    for col in range(ul_col, lr_col):
-                        # Convert pixel coordinate to geographic coordinate
-                        lon, lat = transform * (col + 0.5, row + 0.5)
-
-                        # Check if this point is inside the building polygon
-                        point = ShapelyPoint(lon, lat)
-                        if polygon.contains(point):
-                            # Set pixel to building top height (creates flat roof)
-                            # Use max() to keep the highest value if polygons overlap
-                            heightmap_meters[row, col] = max(heightmap_meters[row, col], building_top_height)
-
-
-            # Find new min/max after adding buildings
-            new_min = np.min(heightmap_meters)
-            new_max = np.max(heightmap_meters)
-
-            # Normalize back to 0-255 range
-            heightmap_normalized = ((heightmap_meters - new_min) / (new_max - new_min) * 255).astype(np.uint8)
-
-            # Update the stored min/max heights so Gazebo knows the new range
-            self.min_height = new_min
-            self.max_height = new_max
-
-        # Write the modified heightmap back to the TIF
-        with rasterio.open(tif_path, 'w', **meta) as dst:
-            dst.write(heightmap_normalized, 1)
 
 
 class OrthoGenerator(ConcatImage):
@@ -495,14 +286,14 @@ class OrthoGenerator(ConcatImage):
 
 
 class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
-    def __init__(self,tile_path:str,**kwargs):
+    def __init__(self,tile_path:str,include_buildings: bool,**kwargs):
         super().__init__(**kwargs)
         self.tile_path = tile_path
+        self.include_buildings = include_buildings
         with open(os.path.join(self.tile_path, 'metadata.json')) as f:
             data = json.load(f)
             self.boundaries = data["bounds"]
             self.launch_location = data["launch_location"]
-
             self.zoom_level = data["zoom_level"]
         self.model_name = os.path.basename(self.tile_path)
 
@@ -544,7 +335,7 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
         return {
             "latitude": origin_lat,
             "longitude": origin_lon,
-            "altitude": self.get_amsl(origin_lat, origin_lon)
+            "altitude": HeightmapGenerator.get_amsl(origin_lat, origin_lon)
         }
 
     def get_launch_location(self) -> list:
@@ -559,7 +350,7 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
         return {
             "latitude": float(location_array[1]),
             "longitude": float(location_array[0]),
-            "altitude": self.get_amsl(float(location_array[1]), float(location_array[0]))
+            "altitude": HeightmapGenerator.get_amsl(float(location_array[1]), float(location_array[0]))
             }
 
     def gen_sdf(self, size_x: float, size_y: float, size_z: float, pose_x: float, pose_y: float, pose_z: float) -> None:
@@ -711,70 +502,6 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
 
         return self.size_x,self.size_y,self.size_z,pose_x,pose_y,pose_z
 
-
-    def download_buildings(self):
-        """
-        Download building data for the terrain area and save as GeoJSON.
-        Uses expanded bounds to capture buildings near the edges.
-        """
-        try:
-            print("Downloading building data...")
-
-            # Parse boundaries from the stored boundaries string
-            bound_array = self.boundaries.split(',')
-            # bounds format: [west_lon, south_lat, east_lon, north_lat]
-            base_bounds = [
-                float(bound_array[0]),  # west_lon
-                float(bound_array[1]),  # south_lat
-                float(bound_array[2]),  # east_lon
-                float(bound_array[3])   # north_lat
-            ]
-
-            # Expand bounds by 10% in each direction to capture buildings near edges
-            lon_range = base_bounds[2] - base_bounds[0]
-            lat_range = base_bounds[3] - base_bounds[1]
-            expansion_factor = 0.10  # 10% expansion
-
-            bounds = [
-                base_bounds[0] - lon_range * expansion_factor,  # west_lon (expand west)
-                base_bounds[1] - lat_range * expansion_factor,  # south_lat (expand south)
-                base_bounds[2] + lon_range * expansion_factor,  # east_lon (expand east)
-                base_bounds[3] + lat_range * expansion_factor   # north_lat (expand north)
-            ]
-
-            print(f"Expanded building search area by {expansion_factor*100}%")
-
-            # Initialize building downloader
-            downloader = BuildingDownloader()
-
-            # Download buildings at zoom 15 (good detail for buildings)
-            building_output_path = os.path.join(
-                globalParam.GAZEBO_MODEL_PATH,
-                self.model_name,
-                'buildings.geojson'
-            )
-
-            buildings_geojson = downloader.download_buildings(
-                bounds=bounds,
-                zoom=15,
-                output_path=building_output_path
-            )
-
-            # Print statistics
-            stats = downloader.get_building_stats(buildings_geojson)
-            print(f"Buildings downloaded: {stats['total_buildings']}")
-            print(f"Buildings with height data: {stats['buildings_with_height']}")
-            if stats['buildings_with_height'] > 0:
-                print(f"Height range: {stats['min_height']:.1f}m - {stats['max_height']:.1f}m")
-                print(f"Average height: {stats['avg_height']:.1f}m")
-
-            return buildings_geojson
-
-        except Exception as e:
-            print(f"Warning: Failed to download building data: {e}")
-            print("Continuing without building data...")
-            return None
-
     def generate_gazebo_world(self):
         """
             Generate the gazebo world along with world files.
@@ -782,23 +509,24 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
 
         print("Map tiles directory being used : ",self.tile_path)
         if os.path.isfile(os.path.join(self.tile_path, 'metadata.json')) and self.tile_path != '':
-            # Download building data BEFORE generating heightmap so buildings can be integrated
-            self.download_buildings()
-
             self.generate_ortho(self.tile_path,self.zoom_level,self.model_name,self.boundaries)
             print("Satellite image generated successfully")
             self.generate_rgb_heightmap(self.tile_path,self.boundaries,self.zoom_level)
             (size_x,size_y,size_z,pose_x,posey,posez) = self.get_world_dimensions()
-
+            if self.include_buildings:
+                print("Starting building data download...")
+                street_map = os.path.join(globalParam.GAZEBO_MODEL_PATH, self.model_name, 'buildings.geojson')
+                output_dae_file = os.path.join(globalParam.GAZEBO_MODEL_PATH, self.model_name, 'textures/buildings.dae')
+                geojson_to_dae = GeoJSONToDAE(street_map,output_dae_file)
+                geojson_to_dae.run()
+                print("Building models generated successfully")
             # Generate SDF files for the world
             self.gen_config()
             self.gen_sdf(size_x,size_y,size_z,pose_x,posey,posez)
             maptile_utiles.dir_check(globalParam.GAZEBO_WORLD_PATH)
-
             self.gen_world()
             print("Generate gazebo model files are save to : ",os.path.join(globalParam.GAZEBO_MODEL_PATH,os.path.basename(self.tile_path)))
             print("Generate gazebo world file are save to : ",globalParam.GAZEBO_WORLD_PATH)
-
             print("Gazebo world files generated successfully")
 
             shutil.rmtree(globalParam.TEMP_PATH)
