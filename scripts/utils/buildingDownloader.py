@@ -139,6 +139,32 @@ class BuildingDownloader:
             "properties": properties
         }
 
+    def bound_array_to_boundary_geojson(self,bound_array):
+        ne = bound_array["northeast"]
+        nw = bound_array["northwest"]
+        se = bound_array["southeast"]
+        sw = bound_array["southwest"]
+
+        return {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Polygon",
+                        "coordinates": [[
+                            [nw[1], nw[0]],
+                            [ne[1], ne[0]],
+                            [se[1], se[0]],
+                            [sw[1], sw[0]],
+                            [nw[1], nw[0]]
+                        ]]
+                    },
+                    "properties": {}
+                }
+            ]
+        }
+    
     def download_buildings(
         self,
         bound_array: Dict[str, Any],
@@ -193,6 +219,12 @@ class BuildingDownloader:
             with Pool(processes=cpu_count()) as pool:
                 pool.starmap(BuildingDownloader.download_tile, tasks)
 
+        boundary_geojson = self.bound_array_to_boundary_geojson(bound_array)
+        true_boundary = unary_union([
+            shape(f["geometry"])
+            for f in boundary_geojson["features"]
+            if f.get("geometry")
+        ])
         # ---- READ tiles ONE BY ONE (important part) ----
         for x in range(tilex_start, tilex_end + 1):
             for y in range(tiley_start, tiley_end + 1):
@@ -210,6 +242,11 @@ class BuildingDownloader:
 
                 # ---- Merge buildings by ID ----
                 for feature in tile_geojson["features"]:
+                    geom = shape(feature["geometry"])
+
+                    # ---- EARLY TRUE BOUNDARY FILTER ----
+                    if not geom.intersects(true_boundary):
+                        continue
                     feature_id = self._get_feature_id(feature)
 
                     if feature_id not in features_by_id:

@@ -353,7 +353,7 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
             "altitude": HeightmapGenerator.get_amsl(float(location_array[1]), float(location_array[0]))
             }
 
-    def gen_sdf(self, size_x: float, size_y: float, size_z: float, pose_x: float, pose_y: float, pose_z: float) -> None:
+    def gen_sdf(self, size_x: float, size_y: float, size_z: float, pose_x: float, pose_y: float, pose_z: float, include_buildings : bool) -> None:
         """
         Generate the SDF file for the world.
 
@@ -371,7 +371,7 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
         """
 
         template = FileWriter.read_template(os.path.join(globalParam.TEMPLATE_DIR_PATH ,'sdf_temp.txt'))
-        FileWriter.write_sdf_file(template, self.model_name, size_x, size_y, size_z,pose_x,pose_y,pose_z, os.path.join(globalParam.GAZEBO_MODEL_PATH, self.model_name))
+        FileWriter.write_sdf_file(template, self.model_name, size_x, size_y, size_z,pose_x,pose_y,pose_z, os.path.join(globalParam.GAZEBO_MODEL_PATH, self.model_name),include_buildings)
 
     def gen_config(self) -> None:
         """
@@ -514,15 +514,16 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
             self.generate_rgb_heightmap(self.tile_path,self.boundaries,self.zoom_level)
             (size_x,size_y,size_z,pose_x,posey,posez) = self.get_world_dimensions()
             if self.include_buildings:
+                origin_coord = self.get_true_origin()
                 print("Starting building data download...")
                 street_map = os.path.join(globalParam.GAZEBO_MODEL_PATH, self.model_name, 'buildings.geojson')
                 output_dae_file = os.path.join(globalParam.GAZEBO_MODEL_PATH, self.model_name, 'textures/buildings.dae')
-                geojson_to_dae = GeoJSONToDAE(street_map,output_dae_file)
-                geojson_to_dae.run()
+                geojson_to_dae = GeoJSONToDAE(street_map, output_dae_file)
+                geojson_to_dae.run(origin_coord)
                 print("Building models generated successfully")
             # Generate SDF files for the world
             self.gen_config()
-            self.gen_sdf(size_x,size_y,size_z,pose_x,posey,posez)
+            self.gen_sdf(size_x,size_y,size_z,pose_x,posey,posez,self.include_buildings)
             maptile_utiles.dir_check(globalParam.GAZEBO_WORLD_PATH)
             self.gen_world()
             print("Generate gazebo model files are save to : ",os.path.join(globalParam.GAZEBO_MODEL_PATH,os.path.basename(self.tile_path)))

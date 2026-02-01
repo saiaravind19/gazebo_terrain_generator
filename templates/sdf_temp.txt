@@ -32,5 +32,8 @@
           </geometry>
         </visual>
       </link>
+
+$BUILDING$
+
     </model>
 </sdf>

@@ -22,6 +22,8 @@ class GeoJSONToDAE:
     def __init__(self, input_geojson: str, output_dae: str):
         self.input_geojson = input_geojson
         self.output_dae = output_dae
+        self.center_lat = None
+        self.center_lon = None
         self.meshes = []
 
     # ---------------- HEIGHT UTILS ----------------
@@ -46,20 +48,19 @@ class GeoJSONToDAE:
 
         return self.DEFAULT_HEIGHT
 
-    # ---------------- PROJECTION ----------------
+# ---------------- PROJECTION ----------------
     def prepare_geodata(self, gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         if gdf.crs is None:
             gdf.set_crs("EPSG:4326", inplace=True)
         else:
             gdf = gdf.to_crs("EPSG:4326")
 
-        center_lon = gdf.geometry.centroid.x.mean()
-        center_lat = gdf.geometry.centroid.y.mean()
+        # Use the center calculated from the boundary array
+        print(f"Aligning projection to Map Center: {self.center_lat:.6f}, {self.center_lon:.6f}")
 
-        print(f"Local projection center: {center_lat:.5f}, {center_lon:.5f}")
-
+        # Local Tangent Plane Projection centered on the Map Tile Center
         local_crs = CRS.from_proj4(
-            f"+proj=aeqd +lat_0={center_lat} +lon_0={center_lon} "
+            f"+proj=aeqd +lat_0={self.center_lat} +lon_0={self.center_lon} "
             "+x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"
         )
 
@@ -162,8 +163,8 @@ class GeoJSONToDAE:
         print(f"Merging {len(self.meshes)} meshes...")
         combined = trimesh.util.concatenate(self.meshes)
 
-        center = combined.centroid
-        combined.apply_translation([-center[0], -center[1], 0])
+        #center = combined.centroid
+        #combined.apply_translation([-center[0], -center[1], -center[2]])
 
         combined.fix_normals()
         combined.export(self.output_dae)
@@ -171,7 +172,12 @@ class GeoJSONToDAE:
         print(f"✔ Exported: {self.output_dae}")
 
     # ---------------- ONE-SHOT ----------------
-    def run(self):
+    def run(self,origin_cords):
+        # Bounds are typically [South (min_lat), West (min_lon), North (max_lat), East (max_lon)]
+        self.center_lat = origin_cords["latitude"]
+        self.center_lon = origin_cords["longitude"]
         gdf = self.load()
+        print("GeoData loaded.")
+
         self.process(gdf)
         self.export()
