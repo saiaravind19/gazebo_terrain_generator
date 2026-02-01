@@ -70,7 +70,7 @@ class BuildingDownloader:
         features = []
 
         tile_data = json.load(open(tile_path, "r"))
-        print(f"Loaded tile data from {tile_path}")
+        #print(f"Loaded tile data from {tile_path}")
         # Check if building layer exists
         if 'building' not in tile_data:
             return {"type": "FeatureCollection", "features": []}
@@ -236,7 +236,7 @@ class BuildingDownloader:
 
                 # Convert tile → GeoJSON
                 tile_geojson = self._tile_to_geojson(tile_path, x, y, zoom)
-                print(f"Processed tile {zoom}/{x}/{y} with {len(tile_geojson.get('features', []))} buildings")
+                #print(f"Processed tile {zoom}/{x}/{y} with {len(tile_geojson.get('features', []))} buildings")
                 if not tile_geojson or "features" not in tile_geojson:
                     continue
 
@@ -268,48 +268,6 @@ class BuildingDownloader:
         print(f"Downloaded & merged {len(geojson['features'])} unique buildings")
 
         return geojson
-
-
-        """
-        for i, (x, y, z) in enumerate(tiles):
-            print(f"Downloading tile {i+1}/{len(tiles)}: {z}/{x}/{y}")
-            #check for tile if already there
-            data = self.download_tile(x, y, z)
-
-            if data and "features" in data:
-                # Collect buildings, merging those with the same ID across tiles
-                for feature in data["features"]:
-                    feature_id = self._get_feature_id(feature)
-
-                    if feature_id not in features_by_id:
-                        # First time seeing this building
-                        features_by_id[feature_id] = feature
-                    else:
-                        # Building appears in multiple tiles - merge the geometries
-                        features_by_id[feature_id] = self._merge_building_features(
-                            features_by_id[feature_id],
-                            feature
-                        )
-
-        # Create final GeoJSON from merged features
-        geojson = {
-            "type": "FeatureCollection",
-            "features": list(features_by_id.values())
-        }
-
-        # Filter to only include buildings with extrude data
-        geojson = self._filter_extrudable_buildings(geojson)
-
-        print(f"Downloaded {len(geojson['features'])} unique buildings")
-
-        # Save to file if path provided
-        if output_path:
-            os.makedirs(os.path.dirname(output_path), exist_ok=True)
-            with open(output_path, 'w') as f:
-                json.dump(geojson, f, indent=2)
-            print(f"Saved buildings to {output_path}")
-        """
-        #return geojson
 
     def _get_feature_id(self, feature: Dict[str, Any]) -> str:
         """
@@ -437,7 +395,6 @@ def download_steetmap_data(bound_array, output_directory, model_path, zoom_level
     street_map_path = os.path.join(model_path,
         'buildings.geojson'
     )
-    print("passed 1")
     buildings_geojson = downloader.download_buildings(
         bound_array=bound_array,
         zoom=zoom_level,

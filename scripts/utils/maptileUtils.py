@@ -68,7 +68,6 @@ class maptile_utiles:
         
         '''
         boundaries  = maptile_utiles.get_max_tilenumber(bound_array,zoom)
-        print("Maxtile boundaries: ",boundaries)
         true_sw     = maptile_utiles.get_tile_bounds(boundaries["southwest"][0],boundaries["southwest"][1],zoom)["southwest"]
         true_se     = maptile_utiles.get_tile_bounds(boundaries["southeast"][0],boundaries["southeast"][1],zoom)["southeast"]
         true_nw     = maptile_utiles.get_tile_bounds(boundaries["northwest"][0],boundaries["northwest"][1],zoom)["northwest"]

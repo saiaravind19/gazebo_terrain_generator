@@ -8,13 +8,12 @@ import uuid
 import uuid
 import ssl
 import os
+import cv2
 import math
 from utils.param import globalParam
 from PIL import Image
 
 class Utils:
-
-
 	@staticmethod
 	def randomString():
 		return uuid.uuid4().hex.upper()[0:6]
@@ -161,7 +160,74 @@ class Utils:
 
 		#TODO implement custom scale
 
-			
+class ConcatImage:
+    def __init__(self,**kwargs):
+        super().__init__(**kwargs)
+
+    def get_x_tile_directories(self, image_dir: str, tile_boundaries: dict) -> list:
+        """
+        Get a numerically sorted list of X-tile directories within tile boundary limits.
+
+        Args:
+            image_dir (str): Path to the zoom level directory containing X-tile directories.
+            tile_boundaries (dict): Dictionary of tile coordinate bounds.
+
+        Returns:
+            list: Sorted list of valid X-tile directory names (as strings).
+        """
+        # List only directory names that are numeric (tile x)
+        dir_list = [d for d in os.listdir(image_dir) if d.isdigit()]
+
+        min_x = min(tile_boundaries["southwest"][0], tile_boundaries["southeast"][0])
+        max_x = max(tile_boundaries["southwest"][0], tile_boundaries["southeast"][0])
+
+        # Filter and sort X directories
+        x_dirs = sorted([d for d in dir_list if min_x <= int(d) <= max_x], key=lambda x: int(x))
+        return x_dirs
+       
+    def process_column_image(self, dir_name, image_dir, tile_boundaries, temp_output_dir):
+        image_list = []
+        max_y = max(tile_boundaries["northwest"][1], tile_boundaries["southwest"][1])
+        min_y = min(tile_boundaries["northwest"][1], tile_boundaries["southwest"][1])
+
+        dir_path = os.path.join(image_dir, dir_name)
+        for image in os.listdir(dir_path):
+            tile_num = int(image.split('.')[0])
+            if min_y <= tile_num <= max_y:
+                image_list.append(os.path.join(dir_path, image))
+
+        image_list.sort()
+        images = [cv2.imread(path) for path in image_list if os.path.exists(path)]
+        if images:
+            output_file = os.path.join(temp_output_dir, dir_name + '.png')
+            cv2.imwrite(output_file, cv2.vconcat(images))
+
+    @staticmethod
+    def _run_instance_method(args : tuple) -> None:
+        """
+        Run an instance method with the provided arguments.
+        Args:
+            args (tuple): A tuple containing the instance and its method arguments.
+        Returns:
+            None
+        """
+        instance, dir_name, image_dir, tile_boundaries, temp_output_dir = args
+        instance.process_column_image(dir_name, image_dir, tile_boundaries, temp_output_dir)
+    
+    @staticmethod
+    def are_dimensions_equal(img1, img2) -> bool:
+        """
+        Check if dimensions of two images are equal.
+
+        Args:
+            img1: First image.
+            img2: Second image.
+
+        Returns:
+            bool: True if dimensions are equal, False otherwise.
+        """ 
+        return img1.shape[:2] == img2.shape[:2]
+		
 
 
 

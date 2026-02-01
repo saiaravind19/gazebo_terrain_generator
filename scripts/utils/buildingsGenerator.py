@@ -7,9 +7,8 @@ from shapely.geometry import (
     GeometryCollection
 )
 from shapely.validation import make_valid
-from pyproj import CRS
+from pyproj import CRS,Transformer
 import re
-
 
 class GeoJSONToDAE:
     # ---------------- CONFIG ----------------
@@ -24,6 +23,10 @@ class GeoJSONToDAE:
         self.output_dae = output_dae
         self.center_lat = None
         self.center_lon = None
+        self.centre_amsl = None
+        self.heightmap = None
+        self.bounds = None
+        self.pose_z = 0.0
         self.meshes = []
 
     # ---------------- HEIGHT UTILS ----------------
@@ -88,7 +91,37 @@ class GeoJSONToDAE:
 
         return []
 
-    # ---------------- GEOMETRY HANDLERS ----------------
+    # ---------------- PIXEL MATH ----------------
+    def get_pixel_elevation(self, lat, lon):
+        """Converts Lat/Lon to World Z using the Heightmap Image."""
+        # 1. Unpack Bounds
+        # Bounds: [min_lat (S), min_lon (W), max_lat (N), max_lon (E)]
+        sw, ne = self.bounds['southwest'], self.bounds['northeast']
+        lat_min, lat_max = sw[0], ne[0]
+        lon_min, lon_max = sw[1], ne[1]
+        
+        width, height = self.heightmap.size
+
+        # 2. Map Lat/Lon to Pixel Coordinates (Linear interpolation)
+        # Note: Image Y origin (0) is usually top (North), so we flip logic for Lat
+        px = int((lon - lon_min) / (lon_max - lon_min) * width)
+        py = int((lat_max - lat) / (lat_max - lat_min) * height)
+
+        # Clamp to image bounds
+        px = max(0, min(px, width - 1))
+        py = max(0, min(py, height - 1))
+
+        # 3. Read Pixel Value (0-255)
+        pixel_val = self.heightmap.getpixel((px, py))
+        
+        # 4. Convert to Local Terrain Height (Meters)
+        # Formula: (Pixel / 255) * Total_Terrain_Z_Height
+        local_z = (pixel_val / 255.0) * self.size_z
+        
+        # 5. Apply Terrain World Offset
+        # The terrain model itself is shifted by terrain_pose_z in the world
+        return local_z + self.pose_z
+
     def handle_polygon(self, geom: Polygon, height: float):
         if geom.area < 0.1:
             return None
@@ -136,13 +169,21 @@ class GeoJSONToDAE:
 
     def process(self, gdf: gpd.GeoDataFrame):
         print(f"Processing {len(gdf)} features...")
-
+        to_wgs84 = Transformer.from_crs(
+            gdf.crs,            # local AEQD
+            "EPSG:4326",
+            always_xy=True
+        )
         for _, row in gdf.iterrows():
             geom = row.geometry
             props = row.drop("geometry").to_dict()
             height = self.get_height(props)
 
             for g in self.flatten_geometry(geom):
+                #The centroid is not always at the centre of the gemotry. So, assuming centroid and the rest of the building base is at the same heigth.
+                centroid = g.centroid
+                lon, lat = to_wgs84.transform(centroid.x, centroid.y)
+                pose_z =  self.get_pixel_elevation(lat, lon)
                 if isinstance(g, Polygon):
                     mesh = self.handle_polygon(g, height)
                 elif isinstance(g, Point):
@@ -153,6 +194,7 @@ class GeoJSONToDAE:
                     mesh = None
 
                 if mesh:
+                    mesh.apply_translation([0, 0, pose_z])
                     self.meshes.append(mesh)
 
     def export(self):
@@ -172,10 +214,15 @@ class GeoJSONToDAE:
         print(f"✔ Exported: {self.output_dae}")
 
     # ---------------- ONE-SHOT ----------------
-    def run(self,origin_cords):
+    def run(self,origin_cords,size_z,pose_z,heightmap,boundaries):
         # Bounds are typically [South (min_lat), West (min_lon), North (max_lat), East (max_lon)]
         self.center_lat = origin_cords["latitude"]
         self.center_lon = origin_cords["longitude"]
+        self.create_amsl = origin_cords["altitude"]
+        self.size_z = size_z
+        self.pose_z = pose_z
+        self.heightmap = heightmap
+        self.bounds = boundaries
         gdf = self.load()
         print("GeoData loaded.")
 
