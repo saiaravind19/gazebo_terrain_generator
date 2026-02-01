@@ -190,7 +190,7 @@ class FileWriter:
 		target.close()
 	
 	@staticmethod
-	def write_sdf_file(sdf_template,model_name,  size_x, size_y, size_z,pose_x,pose_y,origin_height,path):
+	def write_sdf_file(sdf_template,model_name,  size_x, size_y, size_z,pose_x,pose_y,origin_height,path,include_buildings):
 		'''
         Write an SDF file with the provided template and model details.
 
@@ -223,11 +223,50 @@ class FileWriter:
 		sdf_template = sdf_template.replace("$POSZ$",str(origin_height))
 		sdf_template = sdf_template.replace("$AERIALMAP$",str(aerialimg))
 		sdf_template = sdf_template.replace("$HEIGHTMAP$",str(heightmap))
+		if include_buildings:
+			buildings_sdf_block = f"""
+        <!-- ===================== -->
+        <!-- Buildings -->
+        <!-- ===================== -->
+        <link name="buildings">
+          <!-- Relative to model pose -->
+          <pose>0 0 {-origin_height:.2f} 0 0 0</pose>
+          <!-- Visual -->
+          <visual name="buildings_visual">
+            <geometry>
+              <mesh>
+                <uri>model://{model_name}/textures/buildings.dae</uri>
+                <scale>1 1 1</scale>
+              </mesh>
+            </geometry>
+            <material>
+              <!-- Light grey -->
+              <ambient>0.75 0.75 0.75 1</ambient>
+              <diffuse>0.85 0.85 0.85 1</diffuse>
+              <specular>0.05 0.05 0.05 1</specular>
+              <emissive>0 0 0 1</emissive>
+            </material>
+          </visual>
+          <!-- Collision -->
+          <collision name="buildings_collision">
+            <geometry>
+              <mesh>
+                <uri>model://{model_name}/textures/buildings.dae</uri>
+                <scale>1 1 1</scale>
+              </mesh>
+            </geometry>
+          </collision>
+        </link>
+        """
+		else :
+			buildings_sdf_block = """"""
+		sdf_template = sdf_template.replace("$BUILDING$", buildings_sdf_block)
 
     	# Ensure results are a string
 		sdf_content = str(sdf_template)
     	# Open file
 		target = open(os.path.join(path,"model.sdf"), "w")
+
 
     	# Write to model.sdf
 		target.write(sdf_content)

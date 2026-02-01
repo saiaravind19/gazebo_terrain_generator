@@ -2,7 +2,7 @@
 import numpy as np
 import cv2
 import os
-from utils.maptile_utils import maptile_utiles
+from utils.maptileUtils import maptile_utiles
 from multiprocessing import Pool, cpu_count
 from utils.param import globalParam
 
