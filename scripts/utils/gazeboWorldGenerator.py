@@ -114,7 +114,6 @@ class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
         se = boundaries["southeast"]
         ne = boundaries["northeast"]
         origin_lon,origin_lat = float((se[1]+sw[1])/2),float((sw[0]+ne[0])/2) 
-        print("True origin:",origin_lat," ",origin_lon)
         return {
             "latitude": origin_lat,
             "longitude": origin_lon,
