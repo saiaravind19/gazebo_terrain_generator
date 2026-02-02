@@ -27,6 +27,7 @@ class GeoJSONToDAE:
         self.heightmap = None
         self.bounds = None
         self.pose_z = 0.0
+        self.size_z = 0.0
         self.meshes = []
 
     # ---------------- HEIGHT UTILS ----------------
@@ -168,7 +169,6 @@ class GeoJSONToDAE:
         return self.prepare_geodata(gdf)
 
     def process(self, gdf: gpd.GeoDataFrame):
-        print(f"Processing {len(gdf)} features...")
         to_wgs84 = Transformer.from_crs(
             gdf.crs,            # local AEQD
             "EPSG:4326",
@@ -204,9 +204,6 @@ class GeoJSONToDAE:
 
         print(f"Merging {len(self.meshes)} meshes...")
         combined = trimesh.util.concatenate(self.meshes)
-
-        #center = combined.centroid
-        #combined.apply_translation([-center[0], -center[1], -center[2]])
 
         combined.fix_normals()
         combined.export(self.output_dae)
