@@ -11,6 +11,12 @@ A super easy-to-use tool for generate 3D Gazebo terrain using real-world elevati
   </a>
 </p>
 
+<p align="center">
+  <a href="https://youtu.be/-RYXWoHUZNU?si=jEtrnxKcaVLolqhM">
+    <img src="gif/building.png" alt="Project Demo" width="1050"/>
+  </a>
+</p>
+
 ## Features
 
 - **Real-World Terrain Generation**: Generate 3D Gazebo worlds using actual elevation data and satellite images of any location on Earth.
