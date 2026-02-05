@@ -10,3 +10,6 @@ pyproj>=3.4.0
 mapbox_vector_tile
 trimesh
 geopandas
+triangle
+scipy
+pycollada
