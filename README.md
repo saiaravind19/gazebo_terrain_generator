@@ -14,6 +14,7 @@ A super easy-to-use tool for generate 3D Gazebo terrain using real-world elevati
 ## Features
 
 - **Real-World Terrain Generation**: Generate 3D Gazebo worlds using actual elevation data and satellite images of any location on Earth.
+- **3D Buildings**: Add or remove buildings to the gazebo world with a toogle button.
 - **Configurable Spawn Location**: Change the spawn location using interactive UI marker within the region of interest
 - **Configurable Output**: Flexible output paths via environment variables for different deployment scenarios
 - **Customizable Resolution**: Adjustable tile resolution.
@@ -93,7 +94,8 @@ Generated model follow this structure:
 3. Generate Your World:
    - Search for any location on Earth
    - Draw a rectangular region of interest
-   - Place launch pad marker at desired spawn location
+   - Place launch pad marker at desired spawn location.
+   - Enable/Dissable buildings based on usecase.
    - Configure settings (zoom level, map source)
    - Click "Generate Terrain" to create your world
 
