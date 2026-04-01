@@ -40,6 +40,11 @@ python3 -m venv terrain_generator
 source terrain_generator/bin/activate
 ```
 
+or use Pixi
+
+```bash
+pixi shell
+```
 
 ### Install Requirements
 
