@@ -44,6 +44,7 @@ or use Pixi
 
 ```bash
 pixi shell
+pixi run server
 ```
 
 ### Install Requirements
