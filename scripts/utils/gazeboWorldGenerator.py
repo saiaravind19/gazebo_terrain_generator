@@ -14,12 +14,34 @@ from geopy.point import Point
 from multiprocessing import Pool, cpu_count
 from PIL import Image
 import rasterio
+import mercantile
+from rasterio.transform import from_bounds
 
 
 class OrthoGenerator(ConcatImage):
     def __init__(self,**kwargs):
         super().__init__(**kwargs)
 
+    def tf_mercator(self, tile_boundaries, zoom, width, height):
+        x_min = min(
+            tile_boundaries["northwest"][0],
+            tile_boundaries["southwest"][0],
+        )
+        x_max = max(
+            tile_boundaries["northeast"][0],
+            tile_boundaries["southeast"][0],
+        )
+        y_north = min(
+            tile_boundaries["northwest"][1],
+            tile_boundaries["northeast"][1],
+        )
+        y_south = max(
+            tile_boundaries["southwest"][1],
+            tile_boundaries["southeast"][1],
+        )
+        nw = mercantile.xy_bounds(mercantile.Tile(x_min, y_north, zoom))
+        se = mercantile.xy_bounds(mercantile.Tile(x_max, y_south, zoom))
+        return from_bounds(nw.left, se.bottom, se.right, nw.top, width, height)
 
     def generate_ortho(self,path: str,zoomlevel,model_name,boundaries)-> None:
         """
@@ -66,7 +88,13 @@ class OrthoGenerator(ConcatImage):
         compression_params = [cv2.IMWRITE_PNG_COMPRESSION, 9]
         cv2.imwrite(os.path.join(globalParam.GAZEBO_MODEL_PATH, model_name, 'textures', model_name+'_aerial.png'), stitched_image, compression_params)
 
-
+        h, w = stitched_image.shape[:2]
+        transform = self.tf_mercator(tile_boundaries, zoomlevel, w, h)
+        rgb = cv2.cvtColor(stitched_image, cv2.COLOR_BGR2RGB)
+        ortho_tif_path = os.path.join(path, "ortho_mosaic.tif")
+        with rasterio.open(ortho_tif_path, "w", driver="GTiff", height=h, width=w, count=3, dtype=rgb.dtype, crs="EPSG:3857", transform=transform, compress="deflate") as dst:
+            for i in range(3):
+                dst.write(rgb[:, :, i], i + 1)
 
 class GazeboTerrianGenerator(HeightmapGenerator,OrthoGenerator):
     def __init__(self,tile_path:str,include_buildings: bool,**kwargs):
