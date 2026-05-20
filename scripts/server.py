@@ -1,197 +1,271 @@
 #!/usr/bin/env python
 
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, send_file
 import threading
 import os
 import uuid
-import base64
+import json
+import shutil
+import tempfile
 from pathlib import Path
 import mimetypes
-from utils.demTilesDownloader import download_dem_data
-from utils.buildingDownloader import download_steetmap_data
-from utils.fileWriter import FileWriter
+from utils.dem_tiles_downloader import download_dem_data
+from utils.building_downloader import download_streetmap_data
 from utils.utils import Utils
-from utils.gazeboWorldGenerator import GazeboTerrianGenerator
-from utils.maptileUtils import maptile_utiles
-from utils.param import globalParam
-import requests
-import mercantile
+from utils.gazebo_world_generator import GazeboTerrainGenerator
+from utils.maptile_utils import MapTileUtils
+from utils.height_map_generator import HeightmapGenerator, VALID_HEIGHTMAP_SIZES
+
 app = Flask(__name__)
 lock = threading.Lock()
 
+task_status = {"status": "idle", "messages": []} # Global variable to track task status
 
-task_status = {"status": "idle"}  # Global variable to track task status
-
-
-outputdirectory = None
 
 def random_string():
-
 	return uuid.uuid4().hex.upper()[0:6]
 
-def process_end_download(bounds, zoom_level, outputDirectory, outputFile, filePath, include_buildings=False):
+
+def get_map_dir(map_name):
+	return os.path.join(tempfile.gettempdir(), 'gazebo_terrain_generator', map_name)
+
+
+def bounds_from_polygon(vertices):
+	"""Compute [west, south, east, north] bounding box from a list of [lng, lat] polygon vertices."""
+	lngs = [v[0] for v in vertices]
+	lats = [v[1] for v in vertices]
+	return [min(lngs), min(lats), max(lngs), max(lats)]
+
+
+def compute_auto_heightmap_size(bounds, dem_resolution):
+	"""Return the nearest valid 2^n+1 heightmap size to the natural DEM tile dimensions."""
+	dem_tiles = MapTileUtils.get_max_tilenumber(bounds, dem_resolution)
+	x_count = dem_tiles['northeast'][0] - dem_tiles['northwest'][0] + 1
+	y_count = dem_tiles['southwest'][1] - dem_tiles['northwest'][1] + 1
+	natural_max = max(x_count * 512, y_count * 512)
+	return HeightmapGenerator.get_nearest_map_size(natural_max)
+
+
+def process_end_download(map_name, bounds, zoom_level, dem_resolution, include_buildings, polygon_vertices, api_key, heightmap_z_resolution, gazebo_version, target_heightmap_size):
 	global task_status
+
+	def progress(msg):
+		task_status["messages"].append(msg)
+		print(msg)
+
 	try:
 		task_status["status"] = "in_progress"
-		#Perform the long-running task
-		FileWriter.close(lock, os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory), filePath, zoom_level)
-		true_boundaries = maptile_utiles.get_true_boundaries(bounds, zoom_level)
-		download_dem_data(true_boundaries, globalParam.DEM_PATH)
-		orthodir_path = os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory)
-		model_path =  os.path.join(globalParam.GAZEBO_MODEL_PATH,os.path.basename(orthodir_path))
-		if include_buildings:
-			print("Starting building data download...")
-			download_steetmap_data(true_boundaries, globalParam.BUILDING_PATH,model_path)
+		map_dir = get_map_dir(map_name)
 
-		terrian_generator = GazeboTerrianGenerator(orthodir_path,include_buildings)
-		terrian_generator.generate_gazebo_world()
+		# Write resolved target_heightmap_size to metadata for traceability
+		metadata_path = os.path.join(map_dir, 'metadata.json')
+		with open(metadata_path) as f:
+			meta = json.load(f)
+		meta['target_heightmap_size'] = target_heightmap_size
+		with open(metadata_path, 'w') as f:
+			json.dump(meta, f, indent=2)
+
+		true_boundaries = MapTileUtils.get_true_boundaries(bounds, zoom_level)
+
+		progress("Downloading elevation data (DEM)...")
+		dem_path = os.path.join(map_dir, 'dem')
+		download_dem_data(true_boundaries, dem_path, dem_resolution, api_key)
+
+		if include_buildings:
+			progress("Downloading building footprint data...")
+			download_streetmap_data(true_boundaries, os.path.join(map_dir, 'building_tiles'), os.path.join(map_dir, 'terrain_data'), api_key=api_key, polygon_vertices=polygon_vertices)
+
+		terrain_generator = GazeboTerrainGenerator(map_dir, include_buildings, heightmap_z_resolution, gazebo_version, target_heightmap_size)
+		terrain_generator.generate_gazebo_world(progress_cb=progress)
 		task_status["status"] = "completed"
+		task_status["messages"].append("World generated successfully.")
 		print("Gazebo world generation completed successfully.")
 
 	except Exception as e:
 		task_status["status"] = "failed"
+		task_status["messages"].append(f"Error: {e}")
 		print(f"Error during processing: {e}")
 
-
-def validate_mapbox_key(api_key):
-    try:
-        url = f"https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/0,0,1/1x1?access_token={api_key}"
-        response = requests.get(url, timeout=5)  # Add timeout
-        
-        if response.status_code == 200:
-            print("Mapbox API key is validated successfully.")
-            return True
-        elif response.status_code == 401:
-            print("Invalid Mapbox API key.")
-            return False
-        else:
-            print(f"Unexpected response: {response.status_code}")
-            print(response.text)
-            return False
-    except requests.exceptions.ConnectionError:
-        print(" Cannot validate Mapbox API key - no internet connection.")
-        return False  
-    except requests.exceptions.Timeout:
-        print("Mapbox API validation timed out.")
-        return False  
-    except Exception as e:
-        print(f"Error validating Mapbox API key: {e}")
-        return False 
 
 
 @app.route('/task-status', methods=['GET'])
 def task_status_endpoint():
 	global task_status
-	result = {}
-	result["code"] = 200
-	result["message"] = task_status
-	return jsonify(result)
+	messages = task_status["messages"]
+	task_status["messages"] = []
+	return jsonify({"code": 200, "message": {"status": task_status["status"], "messages": messages}})
+
 
 @app.route('/download-tile', methods=['POST'])
 def download_tile():
 	postvars = request.form
 	x = int(postvars['x'])
 	y = int(postvars['y'])
-	z = int(postvars['z'])
-	quad = str(postvars['quad'])
-	timestamp = int(postvars['timestamp'])
-	outputDirectory = str(postvars['outputDirectory'])
-	outputFile = str(postvars['outputFile'])
-	outputScale = 1
+	zoom = int(postvars['z'])
+	map_name = str(postvars['mapName'])
 	source = str(postvars['source'])
+	api_key = str(postvars.get('mapboxApiKey', ''))
 
-	replaceMap = {
-		"x": str(x),
-		"y": str(y),
-		"z": str(z),
-		"quad": quad,
-		"timestamp": str(timestamp),
-	}
-	for key, value in replaceMap.items():
-		outputDirectory = outputDirectory.replace(f"{{{key}}}", value)
-		outputFile = outputFile.replace(f"{{{key}}}", value)
+	file_path = os.path.join(get_map_dir(map_name), 'tiles', f"[{zoom},{y},{x}].png")
 
-	filePath = os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory, outputFile)
+	if os.path.isfile(file_path):
+		return jsonify({"code": 200, "message": "Tile already exists"})
 
-	result = {}
-	if FileWriter.exists(filePath, x, y, z):
-		result["code"] = 200
-		result["message"] = 'Tile already exists'
+	os.makedirs(os.path.dirname(file_path), exist_ok=True)
+	code = Utils.download_file(source, file_path, x, y, zoom, api_key)
+
+	if code == 200:
+		return jsonify({"code": 200, "message": "Tile downloaded"})
 	else:
-		tempFile = random_string() + ".jpg"
-		tempFilePath = os.path.join(globalParam.TEMP_PATH, tempFile)
-		result["code"] = Utils.downloadFileScaled(source, tempFilePath, x, y, z, outputScale)
+		return jsonify({"code": code, "message": "Download failed"})
 
-		if os.path.isfile(tempFilePath):
-			FileWriter.addTile(lock, filePath, tempFilePath, x, y, z, outputScale)
-			with open(tempFilePath, "rb") as image_file:
-				result["image"] = base64.b64encode(image_file.read()).decode("utf-8")
-			os.remove(tempFilePath)
-			result["message"] = 'Tile Downloaded'
-		else:
-			result["message"] = 'Download failed'
-
-	return jsonify(result)
 
 @app.route('/start-download', methods=['POST'])
 def start_download():
-
 	postvars = request.form
-	outputScale = 1
-	outputDirectory = postvars['outputDirectory']
-	outputFile = postvars['outputFile']
+	map_name = postvars['mapName']
 	zoom_level = int(postvars['maxZoom'])
 	timestamp = int(postvars['timestamp'])
-	bounds = list(map(float, postvars['bounds'].split(",")))
-	center = list(map(float, postvars['center'].split(",")))
-	area_rect = postvars['area']
-	launchLocation = list(map(float, postvars['launchLocation'].split(",")))
-	include_buildings = postvars.get('includeBuildlings', 'true').lower() == 'true'
+	polygon_vertices = json.loads(postvars['polygonVertices'])
+	bounds = bounds_from_polygon(polygon_vertices)
+	center = [(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2]
+	launch_location = list(map(float, postvars['launchLocation'].split(",")))
+	include_buildings = postvars.get('includeBuildings', 'true').lower() == 'true'
+	gazebo_version = postvars.get('gazeboVersion', 'harmonic')
+	target_heightmap_size_raw = postvars.get('targetHeightmapSize', 'auto')
+	dem_resolution = min(zoom_level, 13)
 
-	outputDirectory = outputDirectory.replace("{timestamp}", str(timestamp))
-	outputFile = outputFile.replace("{timestamp}", str(timestamp))
-	filePath = os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory, outputFile)
+	output_dir = get_map_dir(map_name)
+	if os.path.exists(output_dir):
+		shutil.rmtree(output_dir)
+	os.makedirs(output_dir)
 
-	FileWriter.addMetadata(
-		lock, os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory), filePath, outputFile,
-		"Map Tiles Downloader via AliFlux", "jpg", bounds, center, area_rect,
-		zoom_level, "mercator", 256 * outputScale, launchLocation=launchLocation
-	)
+	metadata = {
+		"name": map_name,
+		"polygon_vertices": polygon_vertices,
+		"bounds": ','.join(map(str, bounds)),
+		"center": ','.join(map(str, center)),
+		"zoom_level": zoom_level,
+		"dem_resolution": dem_resolution,
+		"launch_location": ','.join(map(str, launch_location)),
+		"include_buildings": include_buildings,
+		"gazebo_version": gazebo_version,
+		"target_heightmap_size_setting": target_heightmap_size_raw,
+		"timestamp": timestamp,
+	}
+	with open(os.path.join(output_dir, 'metadata.json'), 'w') as f:
+		json.dump(metadata, f, indent=2)
+
 	global task_status
-	task_status = {"status": "idle"} 
+	task_status = {"status": "idle", "messages": []}
 	return jsonify({"code": 200, "message": "Metadata written"})
+
 
 @app.route('/end-download', methods=['POST'])
 def end_download():
 	postvars = request.form
-	outputDirectory = postvars['outputDirectory']
-	outputFile = postvars['outputFile']
+	map_name = postvars['mapName']
 	zoom_level = int(postvars['maxZoom'])
-	timestamp = int(postvars['timestamp'])
-	bounds = list(map(float, postvars['bounds'].split(",")))
-	include_buildings = postvars.get('includeBuildlings', 'true').lower() == 'true'
+	polygon_vertices = json.loads(postvars['polygonVertices'])
+	bounds = bounds_from_polygon(polygon_vertices)
+	include_buildings = postvars.get('includeBuildings', 'false').lower() == 'true'
+	gazebo_version = postvars.get('gazeboVersion')
+	heightmap_z_resolution = 255 if gazebo_version == 'fortress' else 65535
+	api_key = postvars.get('mapboxApiKey', '')
+	dem_resolution = min(zoom_level, 13)
 
-	outputDirectory = outputDirectory.replace("{timestamp}", str(timestamp))
-	outputFile = outputFile.replace("{timestamp}", str(timestamp))
-	filePath = os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory, outputFile)
+	target_heightmap_size_raw = postvars.get('targetHeightmapSize', 'auto')
+	if target_heightmap_size_raw == 'auto':
+		target_heightmap_size = compute_auto_heightmap_size(bounds, dem_resolution)
+	else:
+		target_heightmap_size = int(target_heightmap_size_raw)
 
-	FileWriter.close(lock, os.path.join(globalParam.OUTPUT_BASE_PATH, outputDirectory), filePath, zoom_level)
-    # Start the long-running task in a background thread
-	thread = threading.Thread(target=process_end_download, args=(bounds, zoom_level, outputDirectory, outputFile, filePath, include_buildings))
+	thread = threading.Thread(target=process_end_download, args=(map_name, bounds, zoom_level, dem_resolution, include_buildings, polygon_vertices, api_key, heightmap_z_resolution, gazebo_version, target_heightmap_size))
 	thread.start()
 
 	return jsonify({"code": 200, "message": "Download ended"})
 
-@app.route('/', defaults={'path': 'index.htm'})
+
+@app.route('/valid-heightmap-sizes', methods=['GET'])
+def valid_heightmap_sizes():
+	return jsonify({"code": 200, "sizes": VALID_HEIGHTMAP_SIZES})
+
+
+@app.route('/estimate-texture-sizes', methods=['POST'])
+def estimate_texture_sizes():
+	postvars = request.form
+	polygon_vertices = json.loads(postvars['polygonVertices'])
+	zoom_level = int(postvars['zoomLevel'])
+	tile_source = postvars.get('tileSource', '')
+	dem_resolution = min(zoom_level, 13)
+	bounds = bounds_from_polygon(polygon_vertices)
+
+	# DEM tiles from Mapbox terrain-dem-v1 are 512×512px
+	dem_tiles = MapTileUtils.get_max_tilenumber(bounds, dem_resolution)
+	dem_x_count = dem_tiles['northeast'][0] - dem_tiles['northwest'][0] + 1
+	dem_y_count = dem_tiles['southwest'][1] - dem_tiles['northwest'][1] + 1
+	natural_hm_w = dem_x_count * 512
+	natural_hm_h = dem_y_count * 512
+
+	# Satellite tiles: 512px if @2x URL, 256px otherwise
+	sat_tile_px = 512 if '@2x' in tile_source else 256
+	sat_tiles = MapTileUtils.get_max_tilenumber(bounds, zoom_level)
+	sat_x_count = sat_tiles['northeast'][0] - sat_tiles['northwest'][0] + 1
+	sat_y_count = sat_tiles['southwest'][1] - sat_tiles['northwest'][1] + 1
+	natural_tex_padded = max(sat_x_count * sat_tile_px, sat_y_count * sat_tile_px)
+
+	auto_size = HeightmapGenerator.get_nearest_map_size(max(natural_hm_w, natural_hm_h))
+
+	return jsonify({
+		"code": 200,
+		"natural_heightmap_width": natural_hm_w,
+		"natural_heightmap_height": natural_hm_h,
+		"auto_heightmap_size": auto_size,
+		"valid_heightmap_sizes": VALID_HEIGHTMAP_SIZES,
+		"natural_texture_padded": natural_tex_padded
+	})
+
+
+@app.route('/download-world', methods=['GET'])
+def download_world():
+	map_name = request.args.get('mapName', '')
+	if not map_name:
+		return jsonify({"code": 400, "message": "mapName required"}), 400
+
+	map_dir = get_map_dir(map_name)
+	world_file = os.path.join(map_dir, f"{map_name}.world")
+	terrain_data_dir = os.path.join(map_dir, 'terrain_data')
+
+	if not os.path.isfile(world_file):
+		return jsonify({"code": 404, "message": "World file not found"}), 404
+
+	include_intermediary = request.args.get('includeIntermediary', 'false').lower() == 'true'
+
+	zip_path = os.path.join(map_dir, f"{map_name}.zip")
+	import zipfile
+	with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+		zf.write(world_file, f"{map_name}/{map_name}.world")
+		zf.write(os.path.join(map_dir, 'metadata.json'), f"{map_name}/metadata.json")
+		if os.path.isdir(terrain_data_dir):
+			for fname in os.listdir(terrain_data_dir):
+				zf.write(os.path.join(terrain_data_dir, fname), f"{map_name}/terrain_data/{fname}")
+		if include_intermediary:
+			for subdir in ('tiles', 'dem', 'building_tiles'):
+				subdir_path = os.path.join(map_dir, subdir)
+				if os.path.isdir(subdir_path):
+					for fname in os.listdir(subdir_path):
+						zf.write(os.path.join(subdir_path, fname), f"{map_name}/{subdir}/{fname}")
+
+	return send_file(zip_path, mimetype='application/zip', as_attachment=True, download_name=f"{map_name}.zip")
+
+
+@app.route('/', defaults={'path': 'index.html'})
 @app.route('/<path:path>')
 def serve_static(path):
-	file_dir = os.path.join(str(Path(__file__).resolve().parent), 'UI')
+	file_dir = os.path.join(str(Path(__file__).resolve().parent), 'frontend')
 	mime_type, _ = mimetypes.guess_type(path)
 	return send_from_directory(file_dir, path, mimetype=mime_type)
 
 if __name__ == '__main__':
-	
-	if not validate_mapbox_key(globalParam.MAPBOX_API_KEY):
-		exit(1)
 	print("Starting Flask server...")
-	app.run(host='0.0.0.0', port=8080, threaded=True)
+	app.run(host='127.0.0.1', port=8080, threaded=True)

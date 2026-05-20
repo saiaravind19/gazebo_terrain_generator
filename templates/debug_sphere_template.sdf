@@ -1,0 +1,52 @@
+
+        <!-- Simple sphere model at origin used for debugging-->
+        <model name="sphere">
+            <pose>0 0 10 0 0 0</pose>
+            <static>false</static>
+            <link name="sphere_link">
+                <inertial>
+                    <mass>1.0</mass>
+                    <inertia>
+                        <!-- solid sphere: I = 2/5 * m * r^2, r=5 -> I=10 -->
+                        <ixx>10.0</ixx><iyy>10.0</iyy><izz>10.0</izz>
+                        <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
+                    </inertia>
+                </inertial>
+                <collision name="sphere_collision">
+                    <geometry>
+                        <sphere>
+                            <radius>0.5</radius>
+                        </sphere>
+                    </geometry>
+                    <surface>
+                        <bounce>
+                            <restitution_coefficient>0</restitution_coefficient>
+                            <threshold>1e6</threshold>
+                        </bounce>
+                        <friction>
+                            <ode>
+                                <mu>10</mu>
+                                <mu2>10</mu2>
+                            </ode>
+                        </friction>
+                    </surface>
+                </collision>
+                <visual name="sphere_visual">
+                    <geometry>
+                        <sphere>
+                            <radius>0.5</radius>
+                        </sphere>
+                    </geometry>
+                    <material>
+                        <ambient>1 0 0 1</ambient>
+                        <diffuse>1 0 0 1</diffuse>
+                        <specular>1 1 1 1</specular>
+                    </material>
+                </visual>
+                <sensor name="gps" type="navsat">
+                    <always_on>1</always_on>
+                    <update_rate>1</update_rate>
+                    <topic>navsat</topic>
+                </sensor>
+            </link>
+        </model>

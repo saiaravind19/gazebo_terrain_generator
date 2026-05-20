@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gazebo Terrain Generator</title>
+
+    <!-- Mapbox GL JS -->
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Mapbox GL Draw -->
+    <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.css">
+    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.js"></script>
+
+    <!-- Turf JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
+    <!-- Toastify JS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
+    <!-- Application CSS -->
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>Gazebo Terrain Generator</h1>
+        </header>
+
+        <main>
+            <div id="map">
+                <div id="search-box" class="floating-search">
+                    <input type="text" id="coordinate-input" placeholder="Enter coordinates (lat, lng)">
+                    <button type="button" id="search-button">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+
+                <div id="generate-btn-container" class="generate-btn-container">
+                    <button id="generate-btn" class="generate-btn">
+                        <i class="fas fa-globe"></i> Generate Terrain
+                    </button>
+                </div>
+
+                <div id="texture-size-info" class="texture-size-info"></div>
+
+                <div id="settings-panel" class="settings-panel">
+                    <div class="settings-header">
+                        <span class="settings-title">Settings</span>
+                        <button id="settings-close-btn" class="settings-close-btn" title="Close">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="settings-body">
+
+                        <div class="settings-field">
+                            <label for="setting-zoom-level">Zoom Level <i class="fas fa-circle-info tooltip-icon" data-tooltip="Satellite tile resolution. Higher = more detail, more tiles to download. Affects texture quality in Gazebo."></i></label>
+                            <input type="number" id="setting-zoom-level" value="17" min="1" max="22">
+                        </div>
+
+                        <div class="settings-field settings-field--row">
+                            <label for="setting-include-buildings">Include Buildings <i class="fas fa-circle-info tooltip-icon" data-tooltip="Downloads OSM building footprints and extrudes them as 3D meshes. Increases generation time in dense urban areas."></i></label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="setting-include-buildings" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="settings-field">
+                            <label>Map Tile Source <i class="fas fa-circle-info tooltip-icon" data-tooltip="Satellite tile provider URL. Use {x}, {y}, {z} or {quad} as placeholders. Check provider terms before commercial use."></i></label>
+                            <div class="source-field">
+                                <button id="setting-source-display" class="source-display-btn" title="Click to change source"></button>
+                                <button id="setting-source-presets-btn" title="Select from presets">
+                                    <i class="fas fa-chevron-down"></i>
+                                </button>
+                            </div>
+                            <input type="hidden" id="setting-tile-source" value="http://ecn.t0.tiles.virtualearth.net/tiles/a{quad}.jpeg?g=129&mkt=en&stl=H">
+                            <div id="source-presets-dropdown" class="source-presets-dropdown"></div>
+                        </div>
+
+                        <div class="settings-field">
+                            <label for="setting-parallel-downloads">Parallel Downloads <i class="fas fa-circle-info tooltip-icon" data-tooltip="Concurrent tile download threads. Higher values speed up downloads but may trigger provider rate limiting."></i></label>
+                            <input type="number" id="setting-parallel-downloads" value="4" min="1" max="16">
+                        </div>
+
+                        <div class="settings-field">
+                            <label for="setting-gazebo-version">Target Gazebo Version <i class="fas fa-circle-info tooltip-icon" data-tooltip="Harmonic uses 16-bit heightmaps (65535 elevation levels). Fortress uses 8-bit (255 levels) due to a loader limitation in Ignition 6."></i></label>
+                            <select id="setting-gazebo-version">
+                                <option value="harmonic">Harmonic (and above) - (16-bit heightmap)</option>
+                                <option value="fortress">Fortress / Citadel - (8-bit heightmap)</option>
+                            </select>
+                        </div>
+
+                        <div class="settings-field">
+                            <label for="setting-target-heightmap-size">Target Heightmap Size <i class="fas fa-circle-info tooltip-icon" data-tooltip="Output resolution of the heightmap PNG (must be 2^n+1). Auto picks the nearest valid size to raw DEM pixels. Larger sizes add interpolated detail. 4097x4097 requires a high-memory GPU."></i></label>
+                            <select id="setting-target-heightmap-size">
+                                <option value="auto">Auto (nearest to DEM resolution)</option>
+                            </select>
+                        </div>
+
+                        <div class="settings-field settings-field--row">
+                            <label>Mapbox API Key <i class="fas fa-circle-info tooltip-icon" data-tooltip="Required for satellite imagery, elevation data, and geocoding. Stored in your browser only - never sent to this server."></i></label>
+                            <button id="setting-mapbox-key-btn" class="mapbox-key-btn">
+                                <span id="setting-mapbox-key-status">Not set</span>
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </div>
+
+                        <button id="settings-revert-btn" class="settings-revert-btn">
+                            <i class="fas fa-undo"></i> Revert to Defaults
+                        </button>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar commented out for now -->
+            <!-- <aside id="sidebar">
+                <div class="sidebar-content">
+                    <h2>Welcome</h2>
+                    <p>Loading map...</p>
+                </div>
+            </aside> -->
+        </main>
+    </div>
+
+    <!-- API key modal -->
+    <div id="apikey-modal-overlay" class="modal-overlay">
+        <div class="name-modal">
+            <div class="name-modal-header">
+                <i class="fas fa-key"></i>
+                <h2>Mapbox API Key</h2>
+            </div>
+            <p class="name-modal-hint">Paste your Mapbox public token below.<br>It is stored locally in your browser only.</p>
+            <textarea id="apikey-modal-input" class="apikey-modal-input" placeholder="pk.eyJ1Ij..." rows="4" spellcheck="false"></textarea>
+            <p id="apikey-modal-error" class="apikey-modal-error" style="display:none"></p>
+            <div class="name-modal-actions">
+                <button id="apikey-modal-cancel" class="name-modal-btn name-modal-btn--cancel">Cancel</button>
+                <button id="apikey-modal-confirm" class="name-modal-btn name-modal-btn--confirm">
+                    <i class="fas fa-check"></i> Save
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Name modal -->
+    <div id="name-modal-overlay" class="modal-overlay">
+        <div class="name-modal">
+            <div class="name-modal-header">
+                <i class="fas fa-globe"></i>
+                <h2>Name Your World</h2>
+            </div>
+            <p class="name-modal-hint">Used as the output directory name.</p>
+            <input type="text" id="name-modal-input" class="name-modal-input" placeholder="Generating suggestion...">
+            <div class="name-modal-actions">
+                <button id="name-modal-cancel" class="name-modal-btn name-modal-btn--cancel">Cancel</button>
+                <button id="name-modal-confirm" class="name-modal-btn name-modal-btn--confirm">
+                    <i class="fas fa-play"></i> Generate
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Console modal -->
+    <div id="console-overlay" class="modal-overlay">
+        <div class="console-modal">
+            <div class="console-header">
+                <span class="console-title"><i class="fas fa-terminal"></i> Terrain Generation</span>
+                <span id="console-status-badge" class="console-status-badge">Running</span>
+            </div>
+            <div class="console-progress-wrap">
+                <div id="console-progress-fill" class="console-progress-fill"></div>
+            </div>
+            <div id="console-progress-label" class="console-progress-label">0 / 0 tiles</div>
+            <div id="console-log" class="console-log"></div>
+            <div class="console-footer">
+                <label id="console-intermediary-wrap" class="console-intermediary-wrap" style="display:none">
+                    <input type="checkbox" id="console-intermediary-chk">
+                    Include raw tiles
+                </label>
+                <button id="console-download-btn" class="console-download-btn" style="display:none">
+                    <i class="fas fa-download"></i> Download World
+                </button>
+                <button id="console-stop-btn" class="console-stop-btn">
+                    <i class="fas fa-stop"></i> Stop
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application JavaScript -->
+    <script src="js/main.js"></script>
+</body>
+</html>

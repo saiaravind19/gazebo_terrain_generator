@@ -1,0 +1,347 @@
+<?xml version="1.0" ?>
+<sdf version="1.9">
+    <world name="$MODELNAME$">
+
+        <!-- Plugin for simulating physics -->
+        <plugin
+                filename="gz-sim-physics-system"
+                name="gz::sim::systems::Physics">
+        </plugin>
+
+        <!-- Plugin for handling user commands -->
+        <plugin
+                filename="gz-sim-user-commands-system"
+                name="gz::sim::systems::UserCommands">
+        </plugin>
+
+        <!-- Plugin for broadcasting scene updates -->
+        <plugin
+                filename="gz-sim-scene-broadcaster-system"
+                name="gz::sim::systems::SceneBroadcaster">
+        </plugin>
+
+        <!-- Plugin for handling sensors like the LIDAR -->
+        <plugin
+                filename="gz-sim-sensors-system"
+                name="gz::sim::systems::Sensors">
+            <render_engine>ogre2</render_engine>
+        </plugin>
+
+        <!-- Plugin for IMU -->
+        <plugin filename="gz-sim-imu-system"
+                name="gz::sim::systems::Imu">
+        </plugin>
+
+        <!-- plugin for GPS  -->
+        <plugin
+                filename="gz-sim-navsat-system"
+                name="gz::sim::systems::NavSat">
+        </plugin>
+
+        <light type="directional" name="sun">
+            <cast_shadows>true</cast_shadows>
+            <pose>0 -7000 7000 0 0 0</pose>
+            <diffuse>0.9 0.88 0.82 1</diffuse>
+            <!-- Zero specular prevents glint/reflection artifacts on terrain -->
+            <specular>0 0 0 1</specular>
+            <!-- gz-sim/OGRE2 bug: shadow map artifact appears when both X and Y are non-zero.
+                 Workaround: keep one horizontal component zero. Y-only = sun from north. -->
+            <direction>0.0 0.6 -0.6</direction>
+        </light>
+
+        <scene>
+            <!-- Ambient fills in shadows — simulates sky/bounce light -->
+            <ambient>0.45 0.48 0.55 1</ambient>
+            <grid>false</grid>
+            <origin_visual>false</origin_visual>
+            <!-- Procedural sky with atmosphere scattering and clouds -->
+            <sky>
+                <time>10</time>
+                <sunrise>6</sunrise>
+                <sunset>20</sunset>
+                <clouds>
+                    <speed>12</speed>
+                </clouds>
+            </sky>
+        </scene>
+
+        <!-- Polymath standard physics simulation engine config,
+        ODE does not behave correctly with heightmaps, we'll use bullet instead -->
+        <!--        <physics type='ode'>-->
+        <!--            <max_step_size>0.005</max_step_size>-->
+        <!--            <real_time_factor>1</real_time_factor>-->
+        <!--            <real_time_update_rate>200</real_time_update_rate>-->
+        <!--        </physics>-->
+        <physics name="1ms" type="ignored">
+            <dart>
+                <!-- Heightmaps behave better with the bullet collision detector -->
+                <collision_detector>bullet</collision_detector>
+            </dart>
+        </physics>
+        <gravity>0 0 -9.8066</gravity>
+
+        <gui fullscreen='0'>
+            <!-- 3D scene — camera_pose: 80m above launch point, north (yaw=π/2), 30° nose down (pitch=π/6) -->
+            <plugin filename="MinimalScene" name="3D View">
+                <gz-gui>
+                    <title>3D View</title>
+                    <property type="bool" key="showTitleBar">false</property>
+                    <property type="string" key="state">docked</property>
+                </gz-gui>
+                <engine>ogre2</engine>
+                <scene>scene</scene>
+                <ambient_light>0.4 0.4 0.4</ambient_light>
+                <background_color>0.8 0.8 0.8</background_color>
+                <!-- $CAMERA_Z$m above terrain peak, facing north (yaw=π/2), 80° nose down (pitch=80°=1.3963rad) -->
+                <camera_pose>0 0 $CAMERA_Z$ 0 1.3963 1.5708</camera_pose>
+                <camera_clip>
+                    <near>0.1</near>
+                    <far>50000</far>
+                </camera_clip>
+            </plugin>
+            <plugin filename="EntityContextMenuPlugin" name="Entity context menu">
+                <gz-gui>
+                    <property key="state" type="string">floating</property>
+                    <property key="width" type="double">5</property>
+                    <property key="height" type="double">5</property>
+                    <property key="showTitleBar" type="bool">false</property>
+                </gz-gui>
+            </plugin>
+            <plugin filename="GzSceneManager" name="Scene Manager">
+                <gz-gui>
+                    <property key="resizable" type="bool">false</property>
+                    <property key="width" type="double">5</property>
+                    <property key="height" type="double">5</property>
+                    <property key="state" type="string">floating</property>
+                    <property key="showTitleBar" type="bool">false</property>
+                </gz-gui>
+            </plugin>
+            <plugin filename="InteractiveViewControl" name="Interactive view control">
+                <gz-gui>
+                    <property key="resizable" type="bool">false</property>
+                    <property key="width" type="double">5</property>
+                    <property key="height" type="double">5</property>
+                    <property key="state" type="string">floating</property>
+                    <property key="showTitleBar" type="bool">false</property>
+                </gz-gui>
+            </plugin>
+            <plugin filename="CameraTracking" name="Camera Tracking">
+                <gz-gui>
+                    <property key="resizable" type="bool">false</property>
+                    <property key="width" type="double">5</property>
+                    <property key="height" type="double">5</property>
+                    <property key="state" type="string">floating</property>
+                    <property key="showTitleBar" type="bool">false</property>
+                </gz-gui>
+            </plugin>
+            <plugin filename="MarkerManager" name="Marker manager">
+                <gz-gui>
+                    <property key="resizable" type="bool">false</property>
+                    <property key="width" type="double">5</property>
+                    <property key="height" type="double">5</property>
+                    <property key="state" type="string">floating</property>
+                    <property key="showTitleBar" type="bool">false</property>
+                </gz-gui>
+            </plugin>
+            <plugin filename="SelectEntities" name="Select Entities">
+                <gz-gui>
+                    <property key="resizable" type="bool">false</property>
+                    <property key="width" type="double">5</property>
+                    <property key="height" type="double">5</property>
+                    <property key="state" type="string">floating</property>
+                    <property key="showTitleBar" type="bool">false</property>
+                </gz-gui>
+            </plugin>
+            <plugin filename="Spawn" name="Spawn Entities">
+                <gz-gui>
+                    <property key="resizable" type="bool">false</property>
+                    <property key="width" type="double">5</property>
+                    <property key="height" type="double">5</property>
+                    <property key="state" type="string">floating</property>
+                    <property key="showTitleBar" type="bool">false</property>
+                </gz-gui>
+            </plugin>
+            <plugin filename="VisualizationCapabilities" name="Visualization Capabilities">
+                <gz-gui>
+                    <property key="resizable" type="bool">false</property>
+                    <property key="width" type="double">5</property>
+                    <property key="height" type="double">5</property>
+                    <property key="state" type="string">floating</property>
+                    <property key="showTitleBar" type="bool">false</property>
+                </gz-gui>
+            </plugin>
+            <plugin filename="WorldControl" name="World control">
+                <gz-gui>
+                    <title>World control</title>
+                    <property type="bool" key="showTitleBar">false</property>
+                    <property type="bool" key="resizable">false</property>
+                    <property type="double" key="height">72</property>
+                    <property type="double" key="z">1</property>
+                    <property type="string" key="state">floating</property>
+                    <anchors target="3D View">
+                        <line own="left" target="left"/>
+                        <line own="bottom" target="bottom"/>
+                    </anchors>
+                </gz-gui>
+                <play_pause>true</play_pause>
+                <step>true</step>
+                <start_paused>true</start_paused>
+                <use_event>true</use_event>
+            </plugin>
+            <plugin filename="WorldStats" name="World stats">
+                <gz-gui>
+                    <title>World stats</title>
+                    <property type="bool" key="showTitleBar">false</property>
+                    <property type="bool" key="resizable">false</property>
+                    <property type="double" key="height">110</property>
+                    <property type="double" key="width">290</property>
+                    <property type="double" key="z">1</property>
+                    <property type="string" key="state">floating</property>
+                    <anchors target="3D View">
+                        <line own="right" target="right"/>
+                        <line own="bottom" target="bottom"/>
+                    </anchors>
+                </gz-gui>
+                <sim_time>true</sim_time>
+                <real_time>true</real_time>
+                <real_time_factor>true</real_time_factor>
+                <iterations>true</iterations>
+            </plugin>
+            <plugin filename="Shapes" name="Shapes">
+                <gz-gui>
+                    <property key="resizable" type="bool">false</property>
+                    <property key="x" type="double">0</property>
+                    <property key="y" type="double">0</property>
+                    <property key="width" type="double">250</property>
+                    <property key="height" type="double">50</property>
+                    <property key="state" type="string">floating</property>
+                    <property key="showTitleBar" type="bool">false</property>
+                    <property key="cardBackground" type="string">#666666</property>
+                </gz-gui>
+            </plugin>
+            <plugin filename="Lights" name="Lights">
+                <gz-gui>
+                    <property key="resizable" type="bool">false</property>
+                    <property key="x" type="double">250</property>
+                    <property key="y" type="double">0</property>
+                    <property key="width" type="double">150</property>
+                    <property key="height" type="double">50</property>
+                    <property key="state" type="string">floating</property>
+                    <property key="showTitleBar" type="bool">false</property>
+                    <property key="cardBackground" type="string">#666666</property>
+                </gz-gui>
+            </plugin>
+            <plugin filename="TransformControl" name="Transform control">
+                <gz-gui>
+                    <property key="resizable" type="bool">false</property>
+                    <property key="x" type="double">0</property>
+                    <property key="y" type="double">50</property>
+                    <property key="width" type="double">250</property>
+                    <property key="height" type="double">50</property>
+                    <property key="state" type="string">floating</property>
+                    <property key="showTitleBar" type="bool">false</property>
+                    <property key="cardBackground" type="string">#777777</property>
+                </gz-gui>
+            </plugin>
+            <plugin filename="Screenshot" name="Screenshot">
+                <gz-gui>
+                    <property key="resizable" type="bool">false</property>
+                    <property key="x" type="double">250</property>
+                    <property key="y" type="double">50</property>
+                    <property key="width" type="double">50</property>
+                    <property key="height" type="double">50</property>
+                    <property key="state" type="string">floating</property>
+                    <property key="showTitleBar" type="bool">false</property>
+                    <property key="cardBackground" type="string">#777777</property>
+                </gz-gui>
+            </plugin>
+            <plugin filename="CopyPaste" name="CopyPaste">
+                <gz-gui>
+                    <property key="resizable" type="bool">false</property>
+                    <property key="x" type="double">300</property>
+                    <property key="y" type="double">50</property>
+                    <property key="width" type="double">100</property>
+                    <property key="height" type="double">50</property>
+                    <property key="state" type="string">floating</property>
+                    <property key="showTitleBar" type="bool">false</property>
+                    <property key="cardBackground" type="string">#777777</property>
+                </gz-gui>
+            </plugin>
+            <plugin filename="ComponentInspector" name="Component inspector">
+                <gz-gui>
+                    <property type="bool" key="showTitleBar">false</property>
+                    <property type="string" key="state">docked</property>
+                </gz-gui>
+            </plugin>
+            <plugin filename="EntityTree" name="Entity tree">
+                <gz-gui>
+                    <property type="bool" key="showTitleBar">false</property>
+                    <property type="string" key="state">docked</property>
+                </gz-gui>
+            </plugin>
+        </gui>
+
+        <spherical_coordinates>
+            <surface_model>EARTH_WGS84</surface_model>
+            <latitude_deg>$ORIGIN_LAT$</latitude_deg>
+            <longitude_deg>$ORIGIN_LONG$</longitude_deg>
+            <elevation>$ORIGIN_ELEVATION$</elevation>
+        </spherical_coordinates>
+
+        <!-- Terrain model — inlined, no model:// URI required -->
+        <!-- OGRE2 ignores both model and link <pose> for heightmap visuals;
+             visual position is controlled by <heightmap><pos> (world frame).
+             DART ignores <heightmap><pos> for collision; collision position
+             is controlled by <collision><pose> (standard SDF pose chain). -->
+        <model name="$MODELNAME$">
+            <static>true</static>
+            <pose>0 0 0 0 0 0</pose>
+
+            <link name="ground">
+                <collision name="collision">
+                    <pose>$POSX$ $POSY$ $POSZ$ 0 0 0</pose>
+                    <geometry>
+                        <heightmap>
+                            <uri>terrain_data/height_map.png</uri>
+                            <size>$SIZEX$ $SIZEY$ $SIZEZ$</size>
+                            <!-- DART ignores <pos> for collision heightmaps; positioning
+                                 is handled by <collision><pose> above instead -->
+                            <pos>0 0 0</pos>
+                        </heightmap>
+                    </geometry>
+                </collision>
+                <visual name="ground_visual">
+                    <geometry>
+                        <heightmap>
+                            <use_terrain_paging>false</use_terrain_paging>
+                            <texture>
+                                <diffuse>terrain_data/aerial.png</diffuse>
+                                    <normal>terrain_data/normal_map.png</normal>
+                                <size>$TEXTURE_SIZE$</size>
+                            </texture>
+                            <uri>terrain_data/height_map.png</uri>
+                            <size>$SIZEX$ $SIZEY$ $SIZEZ$</size>
+                            <!-- OGRE2 ignores model/link <pose> for heightmaps; <pos> is world frame -->
+                            <pos>$POSX$ $POSY$ $POSZ$</pos>
+                            <!-- sampling: mesh vertices per heightmap pixel (SDF 1.8+ default = 1).
+                                 Tested with 16-bit heightmaps at sampling 1, 4, 8: no visual or
+                                 physics difference observed — OGRE2 interpolates extra vertices but
+                                 the result is indistinguishable at SRTM source resolution. Higher
+                                 values only increase vertex buffer memory (cost scales as sampling²).
+                                 sdformat PR #459 changed default from 2->1: "no good reason to
+                                 subsample by default". Explicitly set to 1 to match intent. -->
+                            <sampling>1</sampling>
+                        </heightmap>
+                    </geometry>
+                </visual>
+            </link>
+
+        </model>
+
+$BUILDING$
+
+$DEBUG_SPHERE$
+
+
+    </world>
+</sdf>
