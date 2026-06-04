@@ -4,6 +4,13 @@ import os, shutil
 
 class MapTileUtils:
     @staticmethod
+    def bounds_from_polygon(vertices):
+        """Compute [west, south, east, north] bounding box from a list of [lng, lat] polygon vertices."""
+        lngs = [v[0] for v in vertices]
+        lats = [v[1] for v in vertices]
+        return [min(lngs), min(lats), max(lngs), max(lats)]
+
+    @staticmethod
     def get_tile_bounds(tile_x, tile_y, zoom):
         """
         Get the latitude/longitude bounds of a tile using the mercantile library.

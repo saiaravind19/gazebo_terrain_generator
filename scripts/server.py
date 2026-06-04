@@ -6,7 +6,6 @@ import os
 import uuid
 import json
 import shutil
-import tempfile
 from pathlib import Path
 import mimetypes
 from utils.dem_tiles_downloader import download_dem_data
@@ -14,27 +13,17 @@ from utils.building_downloader import download_streetmap_data
 from utils.utils import Utils
 from utils.gazebo_world_generator import GazeboTerrainGenerator
 from utils.maptile_utils import MapTileUtils
-from utils.height_map_generator import HeightmapGenerator, VALID_HEIGHTMAP_SIZES
+from utils.height_map_generator import HeightmapGenerator
+from utils.param import GlobalParam
 
 app = Flask(__name__)
 lock = threading.Lock()
 
 task_status = {"status": "idle", "messages": []} # Global variable to track task status
 
-
-def random_string():
-	return uuid.uuid4().hex.upper()[0:6]
-
-
 def get_map_dir(map_name):
-	return os.path.join(tempfile.gettempdir(), 'gazebo_terrain_generator', map_name)
+	return os.path.join(GlobalParam.OUTPUT_BASE_PATH, map_name)
 
-
-def bounds_from_polygon(vertices):
-	"""Compute [west, south, east, north] bounding box from a list of [lng, lat] polygon vertices."""
-	lngs = [v[0] for v in vertices]
-	lats = [v[1] for v in vertices]
-	return [min(lngs), min(lats), max(lngs), max(lats)]
 
 
 def compute_auto_heightmap_size(bounds, dem_resolution):
@@ -46,7 +35,7 @@ def compute_auto_heightmap_size(bounds, dem_resolution):
 	return HeightmapGenerator.get_nearest_map_size(natural_max)
 
 
-def process_end_download(map_name, bounds, zoom_level, dem_resolution, include_buildings, polygon_vertices, api_key, heightmap_z_resolution, gazebo_version, target_heightmap_size):
+def process_end_download(map_name, bounds, zoom_level, dem_resolution, include_buildings, polygon_vertices, api_key, heightmap_z_resolution, gazebo_version, target_heightmap_size, include_helipad=False, helipad_height=5.0):
 	global task_status
 
 	def progress(msg):
@@ -73,10 +62,16 @@ def process_end_download(map_name, bounds, zoom_level, dem_resolution, include_b
 
 		if include_buildings:
 			progress("Downloading building footprint data...")
-			download_streetmap_data(true_boundaries, os.path.join(map_dir, 'building_tiles'), os.path.join(map_dir, 'terrain_data'), api_key=api_key, polygon_vertices=polygon_vertices)
+			download_streetmap_data(true_boundaries, os.path.join(map_dir, 'building_tiles'), map_dir, api_key=api_key, polygon_vertices=polygon_vertices)
 
-		terrain_generator = GazeboTerrainGenerator(map_dir, include_buildings, heightmap_z_resolution, gazebo_version, target_heightmap_size)
+		terrain_generator = GazeboTerrainGenerator(map_dir, include_buildings, heightmap_z_resolution, gazebo_version, target_heightmap_size, include_helipad=include_helipad, helipad_height=helipad_height)
 		terrain_generator.generate_gazebo_world(progress_cb=progress)
+
+		for cleanup_dir in ('tiles', 'dem', 'building_tiles'):
+			cleanup_path = os.path.join(map_dir, cleanup_dir)
+			if os.path.isdir(cleanup_path):
+				shutil.rmtree(cleanup_path)
+
 		task_status["status"] = "completed"
 		task_status["messages"].append("World generated successfully.")
 		print("Gazebo world generation completed successfully.")
@@ -127,13 +122,16 @@ def start_download():
 	zoom_level = int(postvars['maxZoom'])
 	timestamp = int(postvars['timestamp'])
 	polygon_vertices = json.loads(postvars['polygonVertices'])
-	bounds = bounds_from_polygon(polygon_vertices)
+	bounds = MapTileUtils.bounds_from_polygon(polygon_vertices)
 	center = [(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2]
 	launch_location = list(map(float, postvars['launchLocation'].split(",")))
 	include_buildings = postvars.get('includeBuildings', 'true').lower() == 'true'
+	include_helipad = postvars.get('includeHelipad', 'false').lower() == 'true'
+	helipad_height = float(postvars.get('helipadHeight', 5.0))
 	gazebo_version = postvars.get('gazeboVersion', 'harmonic')
 	target_heightmap_size_raw = postvars.get('targetHeightmapSize', 'auto')
-	dem_resolution = min(zoom_level, 13)
+	dem_resolution = min(zoom_level, GlobalParam.DEM_RESOLUTION)
+
 
 	output_dir = get_map_dir(map_name)
 	if os.path.exists(output_dir):
@@ -149,6 +147,8 @@ def start_download():
 		"dem_resolution": dem_resolution,
 		"launch_location": ','.join(map(str, launch_location)),
 		"include_buildings": include_buildings,
+		"include_helipad": include_helipad,
+		"helipad_height": helipad_height,
 		"gazebo_version": gazebo_version,
 		"target_heightmap_size_setting": target_heightmap_size_raw,
 		"timestamp": timestamp,
@@ -167,12 +167,14 @@ def end_download():
 	map_name = postvars['mapName']
 	zoom_level = int(postvars['maxZoom'])
 	polygon_vertices = json.loads(postvars['polygonVertices'])
-	bounds = bounds_from_polygon(polygon_vertices)
+	bounds = MapTileUtils.bounds_from_polygon(polygon_vertices)
 	include_buildings = postvars.get('includeBuildings', 'false').lower() == 'true'
+	include_helipad = postvars.get('includeHelipad', 'false').lower() == 'true'
+	helipad_height = float(postvars.get('helipadHeight', 5.0))
 	gazebo_version = postvars.get('gazeboVersion')
 	heightmap_z_resolution = 255 if gazebo_version == 'fortress' else 65535
 	api_key = postvars.get('mapboxApiKey', '')
-	dem_resolution = min(zoom_level, 13)
+	dem_resolution = min(zoom_level, GlobalParam.DEM_RESOLUTION)
 
 	target_heightmap_size_raw = postvars.get('targetHeightmapSize', 'auto')
 	if target_heightmap_size_raw == 'auto':
@@ -180,7 +182,7 @@ def end_download():
 	else:
 		target_heightmap_size = int(target_heightmap_size_raw)
 
-	thread = threading.Thread(target=process_end_download, args=(map_name, bounds, zoom_level, dem_resolution, include_buildings, polygon_vertices, api_key, heightmap_z_resolution, gazebo_version, target_heightmap_size))
+	thread = threading.Thread(target=process_end_download, args=(map_name, bounds, zoom_level, dem_resolution, include_buildings, polygon_vertices, api_key, heightmap_z_resolution, gazebo_version, target_heightmap_size, include_helipad, helipad_height))
 	thread.start()
 
 	return jsonify({"code": 200, "message": "Download ended"})
@@ -188,7 +190,7 @@ def end_download():
 
 @app.route('/valid-heightmap-sizes', methods=['GET'])
 def valid_heightmap_sizes():
-	return jsonify({"code": 200, "sizes": VALID_HEIGHTMAP_SIZES})
+	return jsonify({"code": 200, "sizes": GlobalParam.VALID_HEIGHTMAP_SIZES})
 
 
 @app.route('/estimate-texture-sizes', methods=['POST'])
@@ -197,8 +199,8 @@ def estimate_texture_sizes():
 	polygon_vertices = json.loads(postvars['polygonVertices'])
 	zoom_level = int(postvars['zoomLevel'])
 	tile_source = postvars.get('tileSource', '')
-	dem_resolution = min(zoom_level, 13)
-	bounds = bounds_from_polygon(polygon_vertices)
+	dem_resolution = min(zoom_level, GlobalParam.DEM_RESOLUTION)
+	bounds = MapTileUtils.bounds_from_polygon(polygon_vertices)
 
 	# DEM tiles from Mapbox terrain-dem-v1 are 512×512px
 	dem_tiles = MapTileUtils.get_max_tilenumber(bounds, dem_resolution)
@@ -221,7 +223,7 @@ def estimate_texture_sizes():
 		"natural_heightmap_width": natural_hm_w,
 		"natural_heightmap_height": natural_hm_h,
 		"auto_heightmap_size": auto_size,
-		"valid_heightmap_sizes": VALID_HEIGHTMAP_SIZES,
+		"valid_heightmap_sizes": GlobalParam.VALID_HEIGHTMAP_SIZES,
 		"natural_texture_padded": natural_tex_padded
 	})
 
@@ -234,29 +236,27 @@ def download_world():
 
 	map_dir = get_map_dir(map_name)
 	world_file = os.path.join(map_dir, f"{map_name}.world")
-	terrain_data_dir = os.path.join(map_dir, 'terrain_data')
 
 	if not os.path.isfile(world_file):
 		return jsonify({"code": 404, "message": "World file not found"}), 404
 
 	include_intermediary = request.args.get('includeIntermediary', 'false').lower() == 'true'
 
-	zip_path = os.path.join(map_dir, f"{map_name}.zip")
 	import zipfile
-	with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
-		zf.write(world_file, f"{map_name}/{map_name}.world")
-		zf.write(os.path.join(map_dir, 'metadata.json'), f"{map_name}/metadata.json")
-		if os.path.isdir(terrain_data_dir):
-			for fname in os.listdir(terrain_data_dir):
-				zf.write(os.path.join(terrain_data_dir, fname), f"{map_name}/terrain_data/{fname}")
+	import io
+	buf = io.BytesIO()
+	with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+		for fname in os.listdir(map_dir):
+			fpath = os.path.join(map_dir, fname)
+			if os.path.isfile(fpath) and not fname.endswith('.zip'):
+				zf.write(fpath, f"{map_name}/{fname}")
 		if include_intermediary:
-			for subdir in ('tiles', 'dem', 'building_tiles'):
-				subdir_path = os.path.join(map_dir, subdir)
-				if os.path.isdir(subdir_path):
-					for fname in os.listdir(subdir_path):
-						zf.write(os.path.join(subdir_path, fname), f"{map_name}/{subdir}/{fname}")
-
-	return send_file(zip_path, mimetype='application/zip', as_attachment=True, download_name=f"{map_name}.zip")
+			tiles_path = os.path.join(map_dir, 'tiles')
+			if os.path.isdir(tiles_path):
+				for fname in os.listdir(tiles_path):
+					zf.write(os.path.join(tiles_path, fname), f"{map_name}/tiles/{fname}")
+	buf.seek(0)
+	return send_file(buf, mimetype='application/zip', as_attachment=True, download_name=f"{map_name}.zip")
 
 
 @app.route('/', defaults={'path': 'index.html'})

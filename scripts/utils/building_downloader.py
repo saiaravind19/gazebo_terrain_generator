@@ -7,12 +7,9 @@ from typing import List, Tuple, Dict, Any
 from shapely.geometry import shape, mapping, Polygon as ShapelyPolygon
 from shapely.ops import unary_union
 from utils.maptile_utils import MapTileUtils
+from utils.param import GlobalParam
 import mercantile
 from multiprocessing import Pool, cpu_count
-
-# Mapbox streets-v8 vector tiles have full building footprint detail at zoom 15;
-# higher zoom levels add no additional buildings.
-BUILDING_TILE_ZOOM = 15
 
 
 class BuildingDownloader:
@@ -148,7 +145,7 @@ class BuildingDownloader:
         self,
         bound_array: Dict[str, Any],
         api_key: str = None,
-        zoom: int = BUILDING_TILE_ZOOM,
+        zoom: int = GlobalParam.DEM_BUILDING_RESOLUTION,
         output_directory: str = None,
         polygon_vertices: list = None  # [[lng, lat], ...] drawn polygon from frontend
     ) -> Dict[str, Any]:
@@ -365,7 +362,7 @@ class BuildingDownloader:
 
 
 
-def download_streetmap_data(bound_array, output_directory, model_path, api_key: str = None, zoom_level: int = BUILDING_TILE_ZOOM, polygon_vertices: list = None):
+def download_streetmap_data(bound_array, output_directory, model_path, api_key: str = None, zoom_level: int = GlobalParam.DEM_BUILDING_RESOLUTION, polygon_vertices: list = None):
     #try:
     downloader = BuildingDownloader()
 

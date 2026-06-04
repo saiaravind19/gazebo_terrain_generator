@@ -2,7 +2,7 @@ import os
 import cv2
 import json
 import numpy as np
-from utils.file_writer import FileWriter, TEMPLATE_DIR
+from utils.file_writer import FileWriter
 from utils.param import GlobalParam
 from utils.maptile_utils import MapTileUtils
 from utils.buildings_generator import GeoJSONToDAE
@@ -31,7 +31,7 @@ class OrthoGenerator(ConcatImage):
             None
         """
         tiles_dir = os.path.join(tile_path, 'tiles')
-        output_dir = os.path.join(tile_path, 'terrain_data')
+        output_dir = tile_path
         os.makedirs(output_dir, exist_ok=True)
 
         # Get tile size from the first available tile to build the gray fill
@@ -116,10 +116,12 @@ class OrthoGenerator(ConcatImage):
 
 
 class GazeboTerrainGenerator(HeightmapGenerator, OrthoGenerator):
-    def __init__(self, tile_path: str, include_buildings: bool, heightmap_z_resolution: int, gazebo_version: str, target_heightmap_size: int, **kwargs):
+    def __init__(self, tile_path: str, include_buildings: bool, heightmap_z_resolution: int, gazebo_version: str, target_heightmap_size: int, include_helipad: bool = False, helipad_height: float = 5.0, **kwargs):
         super().__init__(**kwargs)
         self.tile_path = tile_path
         self.include_buildings = include_buildings
+        self.include_helipad = include_helipad
+        self.helipad_height = helipad_height
         self.heightmap_z_resolution = heightmap_z_resolution
         self.gazebo_version = gazebo_version
         self.target_heightmap_size = target_heightmap_size
@@ -198,7 +200,7 @@ class GazeboTerrainGenerator(HeightmapGenerator, OrthoGenerator):
             None
         """
         template_file = 'gazebo_fortress_world_template.sdf' if self.gazebo_version == 'fortress' else 'gazebo_world_template.sdf'
-        template = FileWriter.read_template(os.path.join(TEMPLATE_DIR, template_file))
+        template = FileWriter.read_template(os.path.join(GlobalParam.TEMPLATE_DIR_PATH, template_file))
         launch_cord = self.get_launch_location()
         FileWriter.write_world_file(
             template,
@@ -210,6 +212,8 @@ class GazeboTerrainGenerator(HeightmapGenerator, OrthoGenerator):
             launch_cord["altitude"],
             self.include_buildings,
             self.tile_path,
+            include_helipad=self.include_helipad,
+            helipad_height=self.helipad_height,
         )
 
     def get_launch_pixelcord(self, south_west_bound, north_east_bound, width, height, launch_location):
@@ -333,9 +337,8 @@ class GazeboTerrainGenerator(HeightmapGenerator, OrthoGenerator):
             if self.include_buildings:
                 progress("Baking building models...")
                 origin_coord = self.get_true_origin()
-                terrain_data_dir = os.path.join(self.tile_path, 'terrain_data')
-                street_map = os.path.join(terrain_data_dir, 'buildings.geojson')
-                output_dae_file = os.path.join(terrain_data_dir, 'buildings.dae')
+                street_map = os.path.join(self.tile_path, 'buildings.geojson')
+                output_dae_file = os.path.join(self.tile_path, 'buildings.dae')
                 bound_array = self.boundaries.split(',')
                 lat_min = float(bound_array[1])
                 lat_max = float(bound_array[3])

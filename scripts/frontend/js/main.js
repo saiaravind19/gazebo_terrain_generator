@@ -20,6 +20,8 @@
     const DEFAULT_CONFIG = {
         zoomLevel: 17,
         includeBuildings: true,
+        includeHelipad: false,
+        helipadHeight: 5,
         tileSource: 'https://api.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}@2x.jpg?access_token={key}',
         parallelDownloads: 4,
         gazeboVersion: 'harmonic',
@@ -74,6 +76,9 @@
     function applyConfigToForm() {
         document.getElementById('setting-zoom-level').value = config.zoomLevel;
         document.getElementById('setting-include-buildings').checked = config.includeBuildings;
+        document.getElementById('setting-include-helipad').checked = config.includeHelipad;
+        document.getElementById('setting-helipad-height').value = config.helipadHeight;
+        document.getElementById('setting-helipad-height-field').style.display = config.includeHelipad ? '' : 'none';
         document.getElementById('setting-tile-source').value = config.tileSource;
         document.getElementById('setting-parallel-downloads').value = config.parallelDownloads;
         document.getElementById('setting-gazebo-version').value = config.gazeboVersion;
@@ -836,6 +841,8 @@
             startData.append('polygonVertices', JSON.stringify(coords));
             startData.append('launchLocation', launchLocation.join(','));
             startData.append('includeBuildings', includeBuildings);
+            startData.append('includeHelipad', config.includeHelipad);
+            startData.append('helipadHeight', config.helipadHeight);
             startData.append('gazeboVersion', config.gazeboVersion);
             startData.append('source', source);
             const startResp = await fetch('/start-download', { method: 'POST', body: startData });
@@ -883,6 +890,8 @@
             endData.append('maxZoom', zoomLevel);
             endData.append('polygonVertices', JSON.stringify(coords));
             endData.append('includeBuildings', includeBuildings);
+            endData.append('includeHelipad', config.includeHelipad);
+            endData.append('helipadHeight', config.helipadHeight);
             endData.append('gazeboVersion', config.gazeboVersion);
             endData.append('targetHeightmapSize', config.targetHeightmapSize);
             endData.append('mapboxApiKey', mapboxApiKey);
@@ -1156,6 +1165,17 @@
 
         document.getElementById('setting-include-buildings').addEventListener('change', function () {
             config.includeBuildings = this.checked;
+            saveConfig();
+        });
+
+        document.getElementById('setting-include-helipad').addEventListener('change', function () {
+            config.includeHelipad = this.checked;
+            document.getElementById('setting-helipad-height-field').style.display = this.checked ? '' : 'none';
+            saveConfig();
+        });
+
+        document.getElementById('setting-helipad-height').addEventListener('change', function () {
+            config.helipadHeight = parseFloat(this.value) || 5;
             saveConfig();
         });
 

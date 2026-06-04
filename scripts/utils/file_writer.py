@@ -1,57 +1,47 @@
 import os
-from pathlib import Path
 from utils.param import GlobalParam
-
-TEMPLATE_DIR = str(Path(__file__).resolve().parents[2] / 'templates')
 
 
 class FileWriter:
 
     @staticmethod
     def read_template(template_file_name):
-        '''
-        Read a template file and return its content as a string.
-
-        Args:
-            template_file_name (str): The path to the template file.
-
-        Returns:
-            str: The content of the template file.
-
-        '''
-        # Open template
         with open(template_file_name, "r") as template_file:
-            # Read template
-            template_hold_text = template_file.read()
-            template = str(template_hold_text)
-        return template
+            return str(template_file.read())
 
     @staticmethod
     def write_world_file(sdf_template, model_name,
                          size_x, size_y, size_z, pose_x, pose_y, pose_z,
                          launch_lat, launch_lon, origin_elevation,
                          include_buildings, output_dir,
-                         texture_size=None):
+                         texture_size=None, include_helipad=False, helipad_height=5.0):
         '''
-        Write a Gazebo world file with the terrain model inlined.
+        Write model.sdf, model.config, and {model_name}.world into output_dir.
+
+        Buildings are embedded in model.sdf so all mesh URIs resolve relative
+        to the model directory regardless of where the world file is launched from.
+        Requires GZ_SIM_RESOURCE_PATH to point to the parent of output_dir.
 
         Args:
-            sdf_template (str): Template content from gazebo_world_template.sdf.
+            sdf_template (str): Content of the Gazebo world template.
             model_name (str): Name of the world/model.
             size_x, size_y, size_z (float): Terrain dimensions in meters.
-            pose_x, pose_y, pose_z (float): Model pose offsets in meters.
-            launch_lat, launch_lon (float): Launch location coordinates.
-            origin_elevation (float): Launch location elevation in meters.
-            include_buildings (bool): Whether to include the buildings link.
-            output_dir (str): Directory to write {model_name}.world into.
-
-        Returns:
-            None
+            pose_x, pose_y, pose_z (float): Terrain offset from launch point in meters.
+            launch_lat, launch_lon (float): Launch location GPS coordinates.
+            origin_elevation (float): Launch location elevation in meters AMSL.
+            include_buildings (bool): Whether to include the buildings model in model.sdf.
+            output_dir (str): Root model directory (flat — all assets live here).
+            texture_size (float|None): UV size for aerial texture; defaults to max(size_x, size_y).
+            include_helipad (bool): Whether to include a helipad at world origin.
         '''
-        dae_file = os.path.join(output_dir, 'terrain_data', 'buildings.dae')
+        texture_size_val = texture_size if texture_size is not None else max(size_x, size_y)
+        camera_z = round(size_z + pose_z + 200, 1)
+
+        # --- Buildings block (model.sdf) ---
+        dae_file = os.path.join(output_dir, 'buildings.dae')
         if include_buildings and os.path.isfile(dae_file):
             building_template = FileWriter.read_template(
-                os.path.join(TEMPLATE_DIR, 'building_template.sdf')
+                os.path.join(GlobalParam.TEMPLATE_DIR_PATH, 'building_template.sdf')
             )
             buildings_sdf_block = (building_template
                 .replace("$MODELNAME$", model_name)
@@ -60,29 +50,59 @@ class FileWriter:
         else:
             buildings_sdf_block = ""
 
-        sdf_template = sdf_template.replace("$MODELNAME$", model_name)
-        sdf_template = sdf_template.replace("$SIZEX$", str(size_x))
-        sdf_template = sdf_template.replace("$SIZEY$", str(size_y))
-        sdf_template = sdf_template.replace("$SIZEZ$", str(size_z))
-        sdf_template = sdf_template.replace("$POSX$", str(pose_x))
-        sdf_template = sdf_template.replace("$POSY$", str(pose_y))
-        sdf_template = sdf_template.replace("$POSZ$", str(pose_z))
-        sdf_template = sdf_template.replace("$ORIGIN_LAT$", str(launch_lat))
-        sdf_template = sdf_template.replace("$ORIGIN_LONG$", str(launch_lon))
-        sdf_template = sdf_template.replace("$ORIGIN_ELEVATION$", str(origin_elevation))
+        # --- Helipad block (model) ---
+        if include_helipad:
+            helipad_block = (
+                f'        <include>\n'
+                f'            <name>{model_name}_helipad</name>\n'
+                f'            <uri>https://fuel.gazebosim.org/1.0/saiaravind19/models/helipad</uri>\n'
+                f'            <pose>0 0 {helipad_height} 0 0 0</pose>\n'
+                f'            <static>true</static>\n'
+                f'        </include>'
+            )
+        else:
+            helipad_block = ""
+
+        # --- Debug sphere block (world file) ---
         if GlobalParam.DEBUG_SPHERE:
             debug_sphere_block = FileWriter.read_template(
-                os.path.join(TEMPLATE_DIR, 'debug_sphere_template.sdf')
+                os.path.join(GlobalParam.TEMPLATE_DIR_PATH, 'debug_sphere_template.sdf')
             )
         else:
             debug_sphere_block = ""
 
-        sdf_template = sdf_template.replace("$BUILDING$", buildings_sdf_block)
-        sdf_template = sdf_template.replace("$DEBUG_SPHERE$", debug_sphere_block)
-        sdf_template = sdf_template.replace("$TEXTURE_SIZE$", str(texture_size if texture_size is not None else max(size_x, size_y)))
-        camera_z = round(size_z + pose_z + 200, 1)  # terrain peak in world frame + 200m clearance
-        sdf_template = sdf_template.replace("$CAMERA_Z$", str(camera_z))
-
         os.makedirs(output_dir, exist_ok=True)
+
+        # --- Write model.sdf (terrain + buildings) ---
+        model_sdf = (FileWriter.read_template(
+            os.path.join(GlobalParam.TEMPLATE_DIR_PATH, 'model_template.sdf'))
+            .replace("$MODELNAME$", model_name)
+            .replace("$SIZEX$", str(size_x))
+            .replace("$SIZEY$", str(size_y))
+            .replace("$SIZEZ$", str(size_z))
+            .replace("$POSX$", str(pose_x))
+            .replace("$POSY$", str(pose_y))
+            .replace("$POSZ$", str(pose_z))
+            .replace("$TEXTURE_SIZE$", str(texture_size_val))
+            .replace("$BUILDING$", buildings_sdf_block)
+            .replace("$HELIPAD$", helipad_block))
+        with open(os.path.join(output_dir, "model.sdf"), "w") as f:
+            f.write(model_sdf)
+
+        # --- Write model.config ---
+        model_config = (FileWriter.read_template(
+            os.path.join(GlobalParam.TEMPLATE_DIR_PATH, 'model_config_template.xml'))
+            .replace("$MODELNAME$", model_name))
+        with open(os.path.join(output_dir, "model.config"), "w") as f:
+            f.write(model_config)
+
+        # --- Write world file ---
+        sdf_template = (sdf_template
+            .replace("$MODELNAME$", model_name)
+            .replace("$ORIGIN_LAT$", str(launch_lat))
+            .replace("$ORIGIN_LONG$", str(launch_lon))
+            .replace("$ORIGIN_ELEVATION$", str(origin_elevation + (helipad_height if include_helipad else 0)))
+            .replace("$CAMERA_Z$", str(camera_z))
+            .replace("$DEBUG_SPHERE$", debug_sphere_block))
         with open(os.path.join(output_dir, model_name + ".world"), "w") as f:
             f.write(sdf_template)

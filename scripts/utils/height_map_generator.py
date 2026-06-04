@@ -5,10 +5,7 @@ import math
 from PIL import Image
 from utils.maptile_utils import MapTileUtils
 from utils.utils import ConcatImage
-
-
-# Valid Gazebo heightmap sizes (must be 2^n+1). Used for dropdown options and auto-sizing.
-VALID_HEIGHTMAP_SIZES = [257, 513, 1025, 2049, 4097]
+from utils.param import GlobalParam
 
 class HeightmapGenerator(ConcatImage):
     def __init__(self,**kwargs):
@@ -75,15 +72,15 @@ class HeightmapGenerator(ConcatImage):
     def get_nearest_map_size(dim):
         """
         Return the nearest valid Gazebo heightmap size (2^n + 1) to the given dimension.
-        Valid sizes are defined in VALID_HEIGHTMAP_SIZES. Clamps to [257, 4097].
+        Valid sizes are defined in GlobalParam.VALID_HEIGHTMAP_SIZES. Clamps to [257, 4097].
         """
         if dim <= 1:
-            return VALID_HEIGHTMAP_SIZES[0]
+            return GlobalParam.VALID_HEIGHTMAP_SIZES[0]
         n = math.log2(max(dim - 1, 1))
         lower = (2 ** int(math.floor(n))) + 1
         upper = (2 ** int(math.ceil(n))) + 1
-        lower = max(lower, VALID_HEIGHTMAP_SIZES[0])
-        upper = min(upper, VALID_HEIGHTMAP_SIZES[-1])
+        lower = max(lower, GlobalParam.VALID_HEIGHTMAP_SIZES[0])
+        upper = min(upper, GlobalParam.VALID_HEIGHTMAP_SIZES[-1])
         return lower if abs(dim - lower) <= abs(dim - upper) else upper
 
 
@@ -136,11 +133,10 @@ class HeightmapGenerator(ConcatImage):
         smooth_kernel = max(3, (size // 1000) * 2 + 1)  # ~31px for 4097, ~15px for 2049, always odd
         resized_map = cv2.GaussianBlur(resized_map, (smooth_kernel, smooth_kernel), sigmaX=0)
 
-        terrain_data_dir = os.path.join(tile_path, 'terrain_data')
-        os.makedirs(terrain_data_dir, exist_ok=True)
+        os.makedirs(tile_path, exist_ok=True)
 
         # cv2 writes uint8 as 8-bit PNG and uint16 as 16-bit PNG automatically
-        cv2.imwrite(os.path.join(terrain_data_dir, 'height_map.png'), resized_map)
+        cv2.imwrite(os.path.join(tile_path, 'height_map.png'), resized_map)
         # Keep PIL image in memory for pixel lookups
         # 8-bit → mode 'L'; 16-bit → mode 'I' (PIL stores uint16 as int32 internally)
         if self.heightmap_z_resolution == 255:
@@ -156,7 +152,7 @@ class HeightmapGenerator(ConcatImage):
         # Scale strength by 65535/heightmap_z_resolution so Sobel gradients are consistent
         # regardless of pixel range (8-bit values are 256× smaller than 16-bit ones)
         normal_map = HeightmapGenerator.generate_normal_map(resized_map, strength=0.0002 * (terrain_range / 100.0) * (65535 / self.heightmap_z_resolution))
-        cv2.imwrite(os.path.join(terrain_data_dir, 'normal_map.png'), normal_map)
+        cv2.imwrite(os.path.join(tile_path, 'normal_map.png'), normal_map)
 
     @staticmethod
     def generate_normal_map(heightmap_u16: np.ndarray, strength: float) -> np.ndarray:

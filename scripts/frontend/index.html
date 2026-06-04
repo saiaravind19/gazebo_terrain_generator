@@ -71,6 +71,19 @@
                             </label>
                         </div>
 
+                        <div class="settings-field settings-field--row">
+                            <label for="setting-include-helipad">Include Helipad <i class="fas fa-circle-info tooltip-icon" data-tooltip="Spawns a helipad marker at the world origin (launch location)."></i></label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="setting-include-helipad">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="settings-field" id="setting-helipad-height-field" style="display:none;">
+                            <label for="setting-helipad-height">Helipad Height (m) <i class="fas fa-circle-info tooltip-icon" data-tooltip="Height of the helipad above the terrain plane in meters."></i></label>
+                            <input type="number" id="setting-helipad-height" value="5" min="0" step="0.5">
+                        </div>
+
                         <div class="settings-field">
                             <label>Map Tile Source <i class="fas fa-circle-info tooltip-icon" data-tooltip="Satellite tile provider URL. Use {x}, {y}, {z} or {quad} as placeholders. Check provider terms before commercial use."></i></label>
                             <div class="source-field">
