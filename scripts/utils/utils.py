@@ -41,7 +41,12 @@ class Utils:
     def download_file(url, destination, x, y, z, api_key=''):
         url = Utils.qualify_url(url, x, y, z, api_key)
         try:
-            urllib.request.urlretrieve(url, destination)
+            req = urllib.request.Request(url, headers={
+                'User-Agent': 'GazeboTerrainGenerator/1.0 (https://github.com/gazebo-terrain-generator)'
+            })
+            with urllib.request.urlopen(req) as resp:
+                with open(destination, 'wb') as f:
+                    f.write(resp.read())
             return 200
         except urllib.error.URLError as e:
             print(e)

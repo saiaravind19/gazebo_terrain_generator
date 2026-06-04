@@ -22,7 +22,7 @@
         includeBuildings: true,
         includeHelipad: false,
         helipadHeight: 3,
-        tileSource: 'https://api.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}@2x.jpg?access_token={key}',
+        tileSource: 'https://mt0.google.com/vt?lyrs=s&x={x}&s=&y={y}&z={z}',
         parallelDownloads: 4,
         gazeboVersion: 'harmonic',
         targetHeightmapSize: 'auto'
