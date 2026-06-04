@@ -35,7 +35,7 @@ def compute_auto_heightmap_size(bounds, dem_resolution):
 	return HeightmapGenerator.get_nearest_map_size(natural_max)
 
 
-def process_end_download(map_name, bounds, zoom_level, dem_resolution, include_buildings, polygon_vertices, api_key, heightmap_z_resolution, gazebo_version, target_heightmap_size, include_helipad=False, helipad_height=5.0):
+def process_end_download(map_name, bounds, zoom_level, dem_resolution, include_buildings, polygon_vertices, api_key, heightmap_z_resolution, gazebo_version, target_heightmap_size, include_helipad, helipad_height):
 	global task_status
 
 	def progress(msg):

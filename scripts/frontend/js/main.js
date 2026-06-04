@@ -21,7 +21,7 @@
         zoomLevel: 17,
         includeBuildings: true,
         includeHelipad: false,
-        helipadHeight: 5,
+        helipadHeight: 3,
         tileSource: 'https://api.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}@2x.jpg?access_token={key}',
         parallelDownloads: 4,
         gazeboVersion: 'harmonic',
@@ -364,17 +364,33 @@
         setupVertexContextMenu();
     }
 
+    function moveMarkerToCentroid(polygon) {
+        const centroid = turf.centroid(polygon);
+        const [lng, lat] = centroid.geometry.coordinates;
+        centerMarker.setLngLat([lng, lat]);
+        updateCoordinateInput(lat, lng);
+    }
+
     // Handle draw create event
     function onDrawCreate(e) {
-        console.log('Polygon created:', e.features);
         setGridVisible(false);
+        if (e.features.length > 0) {
+            moveMarkerToCentroid(e.features[0]);
+        }
         updateCoordinateOverlays();
         updateTextureSizeEstimate();
     }
 
     // Handle draw update event
     function onDrawUpdate(e) {
-        console.log('Polygon updated:', e.features);
+        if (e.features.length > 0) {
+            const polygon = e.features[0];
+            const markerPos = centerMarker.getLngLat();
+            const markerPt = turf.point([markerPos.lng, markerPos.lat]);
+            if (!turf.booleanPointInPolygon(markerPt, polygon)) {
+                moveMarkerToCentroid(polygon);
+            }
+        }
         updateCoordinateOverlays();
         updateTextureSizeEstimate();
     }
@@ -1175,7 +1191,7 @@
         });
 
         document.getElementById('setting-helipad-height').addEventListener('change', function () {
-            config.helipadHeight = parseFloat(this.value) || 5;
+            config.helipadHeight = parseFloat(this.value) || 3;
             saveConfig();
         });
 
