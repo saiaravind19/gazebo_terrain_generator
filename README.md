@@ -23,20 +23,13 @@ A super easy-to-use tool for generating 3D Gazebo terrain using real-world eleva
 - **Downloadable Output**: Get a `.zip` — unzip anywhere and run.
 
 
-## Supported Stack
-
-| Component | Version |
-|---|---|
-| [Gazebo Harmonic](https://gazebosim.org/docs/harmonic/install_ubuntu/) | Recommended |
-| [Gazebo Fortress / Citadel](https://gazebosim.org/docs/fortress/install_ubuntu/) | Supported (use 8-bit heightmap mode) |
+**Supports:** [Gazebo Harmonic](https://gazebosim.org/docs/harmonic/install_ubuntu/) (recommended) · [Gazebo Fortress](https://gazebosim.org/docs/fortress/install_ubuntu/)
 
 
 ## 🔑 Prerequisites
 
 - **Mapbox API Key** — Required for satellite imagery, elevation data, and geocoding. Sign up at [mapbox.com](https://www.mapbox.com/), copy your public token (`pk.eyJ1...`), then paste it in the web UI under **Settings → Mapbox API Key**.
-
-  > [!NOTE]
-  > Your token is stored in the browser only — never server-side.
+  > Your token is stored in the browser only never server-side.
 
 - **Python package manager (`uv`)** — Required to run the project.
 
