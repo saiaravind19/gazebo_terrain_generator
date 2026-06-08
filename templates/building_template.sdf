@@ -11,7 +11,7 @@
                 <visual name="buildings_visual">
                     <geometry>
                         <mesh>
-                            <uri>buildings.dae</uri>
+                            <uri>mesh/buildings.dae</uri>
                             <scale>1 1 1</scale>
                         </mesh>
                     </geometry>
@@ -26,7 +26,7 @@
                 <collision name="buildings_collision">
                     <geometry>
                         <mesh>
-                            <uri>buildings.dae</uri>
+                            <uri>mesh/buildings.dae</uri>
                             <scale>1 1 1</scale>
                         </mesh>
                     </geometry>

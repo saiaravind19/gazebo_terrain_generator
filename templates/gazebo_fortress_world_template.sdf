@@ -254,12 +254,9 @@
             <elevation>$ORIGIN_ELEVATION$</elevation>
         </spherical_coordinates>
 
-        <!-- Terrain model defined in model.sdf make sure to export GZ_SIM_RESOURCE_PATH=<path of models files> -->
         <include>
-            <uri>model://$MODELNAME$</uri>
+            <uri>model.sdf</uri>
         </include>
-
-$DEBUG_SPHERE$
 
 
     </world>

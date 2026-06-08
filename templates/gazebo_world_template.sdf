@@ -288,13 +288,9 @@
             <elevation>$ORIGIN_ELEVATION$</elevation>
         </spherical_coordinates>
 
-        <!-- Terrain model defined in model.sdf in the same directory.
-             Run with: GZ_SIM_RESOURCE_PATH=/tmp/gazebo_terrain_generator gz sim ... -->
         <include>
-            <uri>model://$MODELNAME$</uri>
+            <uri>model.sdf</uri>
         </include>
-
-$DEBUG_SPHERE$
 
 
     </world>

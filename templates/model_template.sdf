@@ -13,7 +13,7 @@
                 <pose>$POSX$ $POSY$ $POSZ$ 0 0 0</pose>
                 <geometry>
                     <heightmap>
-                        <uri>height_map.png</uri>
+                        <uri>mesh/height_map.png</uri>
                         <size>$SIZEX$ $SIZEY$ $SIZEZ$</size>
                         <!-- DART ignores <pos> for collision heightmaps; positioning
                              is handled by <collision><pose> above instead -->
@@ -26,11 +26,11 @@
                     <heightmap>
                         <use_terrain_paging>false</use_terrain_paging>
                         <texture>
-                            <diffuse>aerial.png</diffuse>
-                                <normal>normal_map.png</normal>
+                            <diffuse>mesh/aerial.png</diffuse>
+                                <normal>mesh/normal_map.png</normal>
                             <size>$TEXTURE_SIZE$</size>
                         </texture>
-                        <uri>height_map.png</uri>
+                        <uri>mesh/height_map.png</uri>
                         <size>$SIZEX$ $SIZEY$ $SIZEZ$</size>
                         <!-- OGRE2 ignores model/link <pose> for heightmaps; <pos> is world frame -->
                         <pos>$POSX$ $POSY$ $POSZ$</pos>
