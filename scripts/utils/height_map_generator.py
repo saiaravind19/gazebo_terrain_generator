@@ -133,10 +133,10 @@ class HeightmapGenerator(ConcatImage):
         smooth_kernel = max(3, (size // 1000) * 2 + 1)  # ~31px for 4097, ~15px for 2049, always odd
         resized_map = cv2.GaussianBlur(resized_map, (smooth_kernel, smooth_kernel), sigmaX=0)
 
-        os.makedirs(tile_path, exist_ok=True)
+        mesh_dir = os.path.join(tile_path, 'mesh')
 
         # cv2 writes uint8 as 8-bit PNG and uint16 as 16-bit PNG automatically
-        cv2.imwrite(os.path.join(tile_path, 'height_map.png'), resized_map)
+        cv2.imwrite(os.path.join(mesh_dir, 'height_map.png'), resized_map)
         # Keep PIL image in memory for pixel lookups
         # 8-bit → mode 'L'; 16-bit → mode 'I' (PIL stores uint16 as int32 internally)
         if self.heightmap_z_resolution == 255:
@@ -152,7 +152,7 @@ class HeightmapGenerator(ConcatImage):
         # Scale strength by 65535/heightmap_z_resolution so Sobel gradients are consistent
         # regardless of pixel range (8-bit values are 256× smaller than 16-bit ones)
         normal_map = HeightmapGenerator.generate_normal_map(resized_map, strength=0.0002 * (terrain_range / 100.0) * (65535 / self.heightmap_z_resolution))
-        cv2.imwrite(os.path.join(tile_path, 'normal_map.png'), normal_map)
+        cv2.imwrite(os.path.join(mesh_dir, 'normal_map.png'), normal_map)
 
     @staticmethod
     def generate_normal_map(heightmap_u16: np.ndarray, strength: float) -> np.ndarray:

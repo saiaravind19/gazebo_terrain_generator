@@ -111,7 +111,7 @@ class OrthoGenerator(ConcatImage):
         # Save the stitched image. Level 3 balances speed and file size —
         # level 9 (max) is extremely slow on large images with little extra size reduction.
         compression_params = [cv2.IMWRITE_PNG_COMPRESSION, 3]
-        cv2.imwrite(os.path.join(output_dir, 'aerial.png'), stitched_image, compression_params)
+        cv2.imwrite(os.path.join(output_dir, 'mesh', 'aerial.png'), stitched_image, compression_params)
 
 
 
@@ -135,21 +135,6 @@ class GazeboTerrainGenerator(HeightmapGenerator, OrthoGenerator):
         self.model_name = os.path.basename(self.tile_path)
 
 
-    def get_origin_height(self)-> float:
-        """
-        Get the height at the centre of the heightmap data.
-
-        Args:
-            height_data: Elevation data.
-            resolution (int): Resolution of the heightmap.
-
-        Returns:
-            float: Origin height.
-        """
-
-        origin_cord = self.get_true_origin()
-        return origin_cord["altitude"]
-    
 
 
     def get_true_origin(self)-> list:
@@ -325,6 +310,8 @@ class GazeboTerrainGenerator(HeightmapGenerator, OrthoGenerator):
                 progress_cb(msg)
 
         if os.path.isfile(os.path.join(self.tile_path, 'metadata.json')) and self.tile_path != '':
+            os.makedirs(os.path.join(self.tile_path, 'mesh'), exist_ok=True)
+
             progress("Stitching satellite tiles...")
             self.generate_ortho(self.tile_path, self.zoom_level)
 
@@ -338,7 +325,7 @@ class GazeboTerrainGenerator(HeightmapGenerator, OrthoGenerator):
                 progress("Baking building models...")
                 origin_coord = self.get_true_origin()
                 street_map = os.path.join(self.tile_path, 'buildings.geojson')
-                output_dae_file = os.path.join(self.tile_path, 'buildings.dae')
+                output_dae_file = os.path.join(self.tile_path, 'mesh', 'buildings.dae')
                 bound_array = self.boundaries.split(',')
                 lat_min = float(bound_array[1])
                 lat_max = float(bound_array[3])

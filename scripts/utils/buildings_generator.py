@@ -23,7 +23,6 @@ class GeoJSONToDAE:
         self.output_dae = output_dae
         self.center_lat = None
         self.center_lon = None
-        self.centre_amsl = None
         self.heightmap = None
         self.bounds = None
         self.pose_z = 0.0
@@ -222,7 +221,6 @@ class GeoJSONToDAE:
         # Bounds are typically [South (min_lat), West (min_lon), North (max_lat), East (max_lon)]
         self.center_lat = origin_cords["latitude"]
         self.center_lon = origin_cords["longitude"]
-        self.centre_amsl = origin_cords["altitude"]
         self.size_z = size_z
         self.pose_z = pose_z
         self.heightmap = heightmap

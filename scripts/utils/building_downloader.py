@@ -2,8 +2,7 @@ import os
 import json
 import requests
 import mapbox_vector_tile
-from pathlib import Path
-from typing import List, Tuple, Dict, Any
+from typing import Dict, Any
 from shapely.geometry import shape, mapping, Polygon as ShapelyPolygon
 from shapely.ops import unary_union
 from utils.maptile_utils import MapTileUtils

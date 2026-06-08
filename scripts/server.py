@@ -3,9 +3,10 @@
 from flask import Flask, request, jsonify, send_from_directory, send_file
 import threading
 import os
-import uuid
+import io
 import json
 import shutil
+import zipfile
 from pathlib import Path
 import mimetypes
 from utils.dem_tiles_downloader import download_dem_data
@@ -46,6 +47,10 @@ def process_end_download(map_name, bounds, zoom_level, dem_resolution, include_b
 		task_status["status"] = "in_progress"
 		map_dir = get_map_dir(map_name)
 
+		mesh_dir = os.path.join(map_dir, 'mesh')
+		if os.path.isdir(mesh_dir):
+			shutil.rmtree(mesh_dir)
+
 		# Write resolved target_heightmap_size to metadata for traceability
 		metadata_path = os.path.join(map_dir, 'metadata.json')
 		with open(metadata_path) as f:
@@ -71,6 +76,10 @@ def process_end_download(map_name, bounds, zoom_level, dem_resolution, include_b
 			cleanup_path = os.path.join(map_dir, cleanup_dir)
 			if os.path.isdir(cleanup_path):
 				shutil.rmtree(cleanup_path)
+		for cleanup_file in ('buildings.geojson', 'metadata.json'):
+			cleanup_path = os.path.join(map_dir, cleanup_file)
+			if os.path.isfile(cleanup_path):
+				os.remove(cleanup_path)
 
 		task_status["status"] = "completed"
 		task_status["messages"].append("World generated successfully.")
@@ -125,9 +134,9 @@ def start_download():
 	bounds = MapTileUtils.bounds_from_polygon(polygon_vertices)
 	center = [(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2]
 	launch_location = list(map(float, postvars['launchLocation'].split(",")))
-	include_buildings = postvars.get('includeBuildings', 'true').lower() == 'true'
+	include_buildings = postvars.get('includeBuildings', 'false').lower() == 'true'
 	include_helipad = postvars.get('includeHelipad', 'false').lower() == 'true'
-	helipad_height = float(postvars.get('helipadHeight', 5.0))
+	helipad_height = float(postvars.get('helipadHeight', 3.0))
 	gazebo_version = postvars.get('gazeboVersion', 'harmonic')
 	target_heightmap_size_raw = postvars.get('targetHeightmapSize', 'auto')
 	dem_resolution = min(zoom_level, GlobalParam.DEM_RESOLUTION)
@@ -170,8 +179,8 @@ def end_download():
 	bounds = MapTileUtils.bounds_from_polygon(polygon_vertices)
 	include_buildings = postvars.get('includeBuildings', 'false').lower() == 'true'
 	include_helipad = postvars.get('includeHelipad', 'false').lower() == 'true'
-	helipad_height = float(postvars.get('helipadHeight', 5.0))
-	gazebo_version = postvars.get('gazeboVersion')
+	helipad_height = float(postvars.get('helipadHeight', 3.0))
+	gazebo_version = postvars.get('gazeboVersion', 'harmonic')
 	heightmap_z_resolution = 255 if gazebo_version == 'fortress' else 65535
 	api_key = postvars.get('mapboxApiKey', '')
 	dem_resolution = min(zoom_level, GlobalParam.DEM_RESOLUTION)
@@ -242,8 +251,6 @@ def download_world():
 
 	include_intermediary = request.args.get('includeIntermediary', 'false').lower() == 'true'
 
-	import zipfile
-	import io
 	buf = io.BytesIO()
 	with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
 		for fname in os.listdir(map_dir):

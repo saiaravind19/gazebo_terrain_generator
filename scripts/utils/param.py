@@ -8,9 +8,6 @@ class GlobalParam:
     # Draw tile borders on aerial.png output for debugging tile grid alignment
     DEBUG_TILE_BORDERS          = False
 
-    # Include a red debug sphere at world origin in the generated world file
-    DEBUG_SPHERE                = False
-
     # Output base directory (override with GAZEBO_TERRAIN_OUTPUT_PATH env var)
     OUTPUT_BASE_PATH            = os.path.abspath(os.path.expanduser(
                                       os.getenv('GAZEBO_TERRAIN_OUTPUT_PATH',
@@ -28,3 +25,4 @@ class GlobalParam:
 
     # Valid Gazebo heightmap sizes (must be 2^n+1)
     VALID_HEIGHTMAP_SIZES       = [257, 513, 1025, 2049, 4097]
+

@@ -38,7 +38,7 @@ class FileWriter:
         camera_z = round(size_z + pose_z + 200, 1)
 
         # --- Buildings block (model.sdf) ---
-        dae_file = os.path.join(output_dir, 'buildings.dae')
+        dae_file = os.path.join(output_dir, 'mesh', 'buildings.dae')
         if include_buildings and os.path.isfile(dae_file):
             building_template = FileWriter.read_template(
                 os.path.join(GlobalParam.TEMPLATE_DIR_PATH, 'building_template.sdf')
@@ -62,14 +62,6 @@ class FileWriter:
             )
         else:
             helipad_block = ""
-
-        # --- Debug sphere block (world file) ---
-        if GlobalParam.DEBUG_SPHERE:
-            debug_sphere_block = FileWriter.read_template(
-                os.path.join(GlobalParam.TEMPLATE_DIR_PATH, 'debug_sphere_template.sdf')
-            )
-        else:
-            debug_sphere_block = ""
 
         os.makedirs(output_dir, exist_ok=True)
 
@@ -102,7 +94,6 @@ class FileWriter:
             .replace("$ORIGIN_LAT$", str(launch_lat))
             .replace("$ORIGIN_LONG$", str(launch_lon))
             .replace("$ORIGIN_ELEVATION$", str(origin_elevation + (helipad_height if include_helipad else 0)))
-            .replace("$CAMERA_Z$", str(camera_z))
-            .replace("$DEBUG_SPHERE$", debug_sphere_block))
+            .replace("$CAMERA_Z$", str(camera_z)))
         with open(os.path.join(output_dir, model_name + ".world"), "w") as f:
             f.write(sdf_template)
