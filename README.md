@@ -2,13 +2,6 @@
 
 A super easy-to-use tool for generating 3D Gazebo terrain using real-world elevation and satellite data. Draw a polygon on a map, set a spawn location, and get a ready-to-use `.world` file with a textured heightmap and optional 3D buildings.
 
-<p align="center">
-  <img src="media/webui.png" alt="Web UI" width="100%"/>
-</p>
-
-<p align="center">
-  <img src="media/gazebo.png" alt="Generated world in Gazebo" width="100%"/>
-</p>
 
 <video src="https://github.com/user-attachments/assets/42289e73-c66a-4605-85c6-c95d13139d44" controls width="100%"></video>
 
