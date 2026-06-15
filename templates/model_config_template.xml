@@ -2,7 +2,6 @@
 <model>
   <name>$MODELNAME$</name>
   <version>1.0</version>
-  <sdf version="1.9">model.sdf</sdf>
   <author>
     <name>Gazebo Terrain Generator</name>
     <email></email>
