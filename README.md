@@ -111,7 +111,6 @@ export GAZEBO_TERRAIN_OUTPUT_PATH=/your/custom/path
 <summary>Gazebo Harmonic (and above)</summary>
 
 ```bash
-cd /tmp/gazebo_terrain_generator/{world_name}/
 gz sim /tmp/gazebo_terrain_generator/{world_name}/{world_name}.world
 ```
 
@@ -121,7 +120,6 @@ gz sim /tmp/gazebo_terrain_generator/{world_name}/{world_name}.world
 <summary>Gazebo Fortress / Citadel</summary>
 
 ```bash
-cd /tmp/gazebo_terrain_generator/{world_name}/
 ign gazebo /tmp/gazebo_terrain_generator/{world_name}/{world_name}.world
 ```
 
