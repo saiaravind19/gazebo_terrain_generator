@@ -1,23 +1,28 @@
 import os
+import tempfile
 from pathlib import Path
 
-class globalParam:
 
-    TEMP_PATH                   =  str(Path(__file__).resolve().parents[2] / 'temp')
-    OUTPUT_BASE_PATH            = str(Path(__file__).resolve().parents[2] / 'output')
+class GlobalParam:
 
-    GAZEBO_MODEL_PATH           = os.path.abspath(os.path.expanduser(os.getenv('GAZEBO_MODEL_PATH', os.path.join(OUTPUT_BASE_PATH,'gazebo_terrain'))))  
-    GAZEBO_WORLD_PATH           = os.path.abspath(os.path.expanduser(os.getenv('GAZEBO_WORLD_PATH', os.path.join(OUTPUT_BASE_PATH,'gazebo_terrain/worlds',))))  
+    # Draw tile borders on aerial.png output for debugging tile grid alignment
+    DEBUG_TILE_BORDERS          = False
+
+    # Output base directory (override with GAZEBO_TERRAIN_OUTPUT_PATH env var)
+    OUTPUT_BASE_PATH            = os.path.abspath(os.path.expanduser(
+                                      os.getenv('GAZEBO_TERRAIN_OUTPUT_PATH',
+                                                os.path.join(tempfile.gettempdir(), 'gazebo_terrain_generator'))
+                                  ))
+
+    # Path to the SDF/XML world templates directory
+    TEMPLATE_DIR_PATH           = str(Path(__file__).resolve().parents[2] / 'templates')
+
+    # DEM zoom cap — Mapbox Terrain-DEM-v1 has real SRTM data only up to zoom 13
     DEM_RESOLUTION              = 13
+
+    # Building vector tile zoom — Mapbox streets-v8 has full footprint detail at zoom 15
     DEM_BUILDING_RESOLUTION     = 15
 
+    # Valid Gazebo heightmap sizes (must be 2^n+1)
+    VALID_HEIGHTMAP_SIZES       = [257, 513, 1025, 2049, 4097]
 
-    DEM_PATH                    = os.path.join(OUTPUT_BASE_PATH, 'dem')
-    BUILDING_PATH               = os.path.join(OUTPUT_BASE_PATH, 'streetmap')
-    HELIPAD_MODEL         = "https://fuel.gazebosim.org/1.0/saiaravind19/models/helipad" 
-    # Set the global config
-    TEMPORARY_SATELLITE_IMAGE    = os.path.join(TEMP_PATH,'gazebo_terrian')
-    TEMPLATE_DIR_PATH            = str(Path(__file__).resolve().parents[2] / 'templates')
-    
-    # Free Mapbox API Key 
-    MAPBOX_API_KEY               = "pk.eyJ1IjoiYXJhdmluZDE5NDAiLCJhIjoiY21jNDVyYTM5MDdxYjJqc2FjczA3bTBmeSJ9.kNLCV2BhlN0CRCOBJIpM1A"  

@@ -1,0 +1,959 @@
+/* Reset and base styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    overflow: hidden;
+}
+
+/* App container */
+#app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* Header */
+header {
+    background: #2c3e50;
+    color: white;
+    padding: 1rem 2rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+}
+
+header h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* Main content area */
+main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Map container */
+#map {
+    flex: 1;
+    position: relative;
+}
+
+/* Sidebar - commented out */
+/* #sidebar {
+    width: 350px;
+    background: white;
+    border-left: 1px solid #ddd;
+    overflow-y: auto;
+    box-shadow: -2px 0 4px rgba(0, 0, 0, 0.05);
+}
+
+.sidebar-content {
+    padding: 2rem;
+}
+
+.sidebar-content h2 {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+    color: #2c3e50;
+}
+
+.sidebar-content p {
+    color: #555;
+    line-height: 1.6;
+} */
+
+/* Floating search box */
+.floating-search {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 1;
+    background: white;
+    border-radius: 24px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+}
+
+.floating-search input {
+    width: 280px;
+    padding: 12px 16px;
+    border: none;
+    font-size: 14px;
+    font-family: monospace;
+    color: #333;
+    background: transparent;
+    outline: none;
+}
+
+.floating-search input:focus {
+    outline: none;
+}
+
+.floating-search:focus-within {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), 0 0 0 2px rgba(52, 152, 219, 0.3);
+}
+
+.floating-search button {
+    padding: 12px 16px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.floating-search button:hover {
+    background: rgba(52, 152, 219, 0.1);
+}
+
+.floating-search button:active {
+    background: rgba(52, 152, 219, 0.2);
+}
+
+/* Mapbox controls customization */
+.mapboxgl-ctrl-top-right {
+    top: 10px;
+    right: 10px;
+}
+
+.mapboxgl-ctrl-bottom-left {
+    bottom: 10px;
+    left: 10px;
+}
+
+/* Marker cursor */
+.mapboxgl-marker {
+    cursor: move;
+}
+
+/* Custom draw controls */
+.custom-draw-controls {
+    margin-top: 10px;
+}
+
+.custom-draw-controls button {
+    width: 29px;
+    height: 29px;
+    display: block;
+    padding: 0;
+    outline: none;
+    border: 0;
+    box-sizing: border-box;
+    background-color: transparent;
+    cursor: pointer;
+    color: #404040;
+}
+
+.custom-draw-controls button:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Coordinate labels */
+.coordinate-label .mapboxgl-popup-content {
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    font-family: monospace;
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 3px;
+}
+
+.coordinate-label .mapboxgl-popup-tip {
+    border-top-color: rgba(0, 0, 0, 0.8);
+}
+
+/* Vertex delete popup */
+.vertex-delete-popup .mapboxgl-popup-content {
+    padding: 4px;
+    background: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    border-radius: 50%;
+}
+
+.vertex-delete-popup .mapboxgl-popup-tip {
+    border-top-color: white;
+}
+
+.vertex-delete-popup.mapboxgl-popup-anchor-top .mapboxgl-popup-tip {
+    border-bottom-color: white;
+    border-top-color: transparent;
+}
+
+.delete-vertex-btn {
+    background: white;
+    color: black;
+    border: none;
+    padding: 8px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    transition: background 0.2s, color 0.2s;
+}
+
+.delete-vertex-btn:hover {
+    background: #f8f8f8;
+    color: #c0392b;
+}
+
+/* Generate button */
+.generate-btn-container {
+    position: absolute;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+}
+
+.generate-btn {
+    background: #3bb2d0;
+    color: white;
+    border: none;
+    border-radius: 24px;
+    padding: 13px 32px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(59, 178, 208, 0.5);
+    transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+    white-space: nowrap;
+}
+
+.generate-btn:hover {
+    background: #2e9dbf;
+    box-shadow: 0 6px 24px rgba(59, 178, 208, 0.65);
+}
+
+.generate-btn:active {
+    filter: brightness(0.85);
+    box-shadow: 0 2px 8px rgba(59, 178, 208, 0.3);
+}
+
+/* Modal overlay */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    z-index: 2000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-overlay.open {
+    display: flex;
+}
+
+/* Name modal */
+.name-modal {
+    background: #1e2d3d;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 28px;
+    width: 380px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.name-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.name-modal-header i {
+    color: #3bb2d0;
+    font-size: 20px;
+}
+
+.name-modal-header h2 {
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.name-modal-hint {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 12px;
+    margin: 0 0 16px;
+}
+
+.name-modal-input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    color: white;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: monospace;
+    outline: none;
+    box-sizing: border-box;
+    margin-bottom: 20px;
+    transition: border-color 0.2s;
+}
+
+.name-modal-input:focus {
+    border-color: rgba(59, 178, 208, 0.5);
+}
+
+.apikey-modal-input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    color: white;
+    padding: 10px 12px;
+    font-size: 12px;
+    font-family: monospace;
+    outline: none;
+    box-sizing: border-box;
+    margin-bottom: 20px;
+    resize: vertical;
+    word-break: break-all;
+    transition: border-color 0.2s;
+}
+
+.apikey-modal-input:focus {
+    border-color: rgba(59, 178, 208, 0.5);
+}
+
+.apikey-modal-error {
+    color: #e74c3c;
+    font-size: 12px;
+    margin: -12px 0 16px;
+    text-align: center;
+}
+
+.mapbox-key-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 12px;
+    padding: 5px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s;
+}
+
+.mapbox-key-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.mapbox-key-btn.key-set {
+    color: #3bb2d0;
+    border-color: rgba(59, 178, 208, 0.3);
+}
+
+.name-modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.name-modal-btn {
+    padding: 9px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.name-modal-btn--cancel {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.name-modal-btn--cancel:hover {
+    background: rgba(255, 255, 255, 0.13);
+    color: white;
+}
+
+.name-modal-btn--confirm {
+    background: #3bb2d0;
+    color: white;
+}
+
+.name-modal-btn--confirm:hover {
+    background: #2e9dbf;
+}
+
+/* Console modal */
+.console-modal {
+    background: #0d1117;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    width: 580px;
+    max-width: calc(100vw - 40px);
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    overflow: hidden;
+}
+
+.console-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    background: #161b22;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+}
+
+.console-title {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.console-title i {
+    margin-right: 8px;
+    color: #3bb2d0;
+}
+
+.console-status-badge {
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 10px;
+    background: rgba(59, 178, 208, 0.12);
+    color: #3bb2d0;
+    border: 1px solid rgba(59, 178, 208, 0.25);
+}
+
+.console-status-badge.completed {
+    background: rgba(39, 174, 96, 0.12);
+    color: #27ae60;
+    border-color: rgba(39, 174, 96, 0.25);
+}
+
+.console-status-badge.failed {
+    background: rgba(231, 76, 60, 0.12);
+    color: #e74c3c;
+    border-color: rgba(231, 76, 60, 0.25);
+}
+
+.console-status-badge.stopped {
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.4);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.console-progress-wrap {
+    height: 3px;
+    background: rgba(255, 255, 255, 0.06);
+    flex-shrink: 0;
+}
+
+.console-progress-fill {
+    height: 100%;
+    background: #3bb2d0;
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.console-progress-label {
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 11px;
+    font-family: monospace;
+    padding: 6px 18px 2px;
+    flex-shrink: 0;
+}
+
+.console-log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 18px 14px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.65);
+    line-height: 1.7;
+    min-height: 180px;
+    max-height: 280px;
+}
+
+.console-log p {
+    margin: 0;
+    padding: 0;
+}
+
+.console-log p.log-success { color: #27ae60; }
+.console-log p.log-error   { color: #e74c3c; }
+.console-log p.log-info    { color: #3bb2d0; }
+
+.console-footer {
+    padding: 12px 18px;
+    background: #161b22;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    justify-content: flex-end;
+    flex-shrink: 0;
+}
+
+.console-stop-btn {
+    background: rgba(231, 76, 60, 0.1);
+    border: 1px solid rgba(231, 76, 60, 0.25);
+    color: #e74c3c;
+    padding: 8px 20px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.console-stop-btn:hover {
+    background: rgba(231, 76, 60, 0.2);
+}
+
+.console-stop-btn.close {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.console-stop-btn.close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.console-download-btn {
+    background: rgba(59, 178, 208, 0.1);
+    border: 1px solid rgba(59, 178, 208, 0.3);
+    color: #3bb2d0;
+    padding: 8px 20px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-right: 8px;
+}
+
+.console-download-btn:hover {
+    background: rgba(59, 178, 208, 0.2);
+}
+
+.console-intermediary-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-right: 12px;
+    cursor: pointer;
+    user-select: none;
+}
+
+/* Settings panel */
+.settings-panel {
+    position: absolute;
+    top: 0;
+    right: -320px;
+    width: 300px;
+    height: 100%;
+    background: #1e2d3d;
+    z-index: 500;
+    transition: right 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow-y: auto;
+    overflow-x: hidden;
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    flex-direction: column;
+}
+
+.settings-panel.open {
+    right: 0;
+}
+
+/* Shift right-anchored map overlays clear of the settings panel when open */
+#map.settings-open .mapboxgl-ctrl-top-right,
+#map.settings-open .mapboxgl-ctrl-bottom-right,
+#map.settings-open .texture-size-info {
+    transform: translateX(-310px);
+}
+
+.mapboxgl-ctrl-top-right,
+.mapboxgl-ctrl-bottom-right,
+.texture-size-info {
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.settings-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    background: #2c3e50;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+}
+
+.settings-title {
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.settings-close-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+    transition: color 0.2s, background 0.2s;
+    display: flex;
+    align-items: center;
+}
+
+.settings-close-btn:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.settings-body {
+    padding: 16px;
+    flex: 1;
+}
+
+.settings-section-title {
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    margin: 24px 0 10px 0;
+}
+
+.settings-field > label {
+    display: block;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 12px;
+    margin-bottom: 6px;
+}
+
+.settings-field input[type="text"],
+.settings-field input[type="number"],
+.settings-field select {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.9);
+    padding: 8px 10px;
+    font-size: 12px;
+    font-family: monospace;
+    outline: none;
+    transition: border-color 0.2s, background 0.2s;
+    box-sizing: border-box;
+}
+
+.settings-field select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='rgba(255,255,255,0.4)'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 28px;
+    cursor: pointer;
+}
+
+.settings-field select option {
+    background: #1e2d3d;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.settings-field input[type="text"]:focus,
+.settings-field input[type="number"]:focus,
+.settings-field select:focus {
+    border-color: rgba(59, 178, 208, 0.5);
+    background: rgba(255, 255, 255, 0.09);
+}
+
+/* Row field: label + toggle on same line */
+.settings-field--row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.settings-field--row > label {
+    margin-bottom: 0;
+}
+
+/* Toggle switch */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 22px;
+    flex-shrink: 0;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 22px;
+    transition: background 0.2s;
+}
+
+.toggle-slider::before {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    left: 3px;
+    top: 3px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.2s;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+    background: #3bb2d0;
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+    transform: translateX(18px);
+}
+
+/* Revert to Defaults button */
+.settings-revert-btn {
+    width: 100%;
+    margin-top: 8px;
+    padding: 9px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 12px;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+
+.settings-revert-btn:hover {
+    border-color: rgba(231, 76, 60, 0.5);
+    color: #e74c3c;
+    background: rgba(231, 76, 60, 0.05);
+}
+
+/* Source field row */
+.source-field {
+    display: flex;
+    gap: 6px;
+}
+
+.source-field input {
+    flex: 1;
+    min-width: 0;
+}
+
+.source-display-btn {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.9);
+    padding: 8px 10px;
+    min-height: 34px;
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.source-display-btn:hover {
+    background: rgba(255, 255, 255, 0.09);
+    border-color: rgba(59, 178, 208, 0.4);
+}
+
+.source-field > button {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.6);
+    padding: 0 10px;
+    min-height: 34px;
+    cursor: pointer;
+    font-size: 11px;
+    transition: background 0.2s, color 0.2s;
+    flex-shrink: 0;
+}
+
+.source-field > button:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+/* Source presets dropdown */
+.source-presets-dropdown {
+    display: none;
+    background: #263647;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    margin-top: 6px;
+    overflow: hidden;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.source-presets-dropdown.open {
+    display: block;
+}
+
+.source-preset-item {
+    padding: 8px 12px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.source-preset-item:hover {
+    background: rgba(59, 178, 208, 0.15);
+    color: white;
+}
+
+.source-preset-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+    margin: 3px 0;
+}
+
+/* Settings tooltip icon.
+   Tooltip is anchored to .settings-field (position: relative) so it spans the full
+   field width and stays within the panel — avoids clipping from overflow-x: hidden. */
+.settings-field {
+    margin-bottom: 14px;
+    position: relative;
+}
+
+.tooltip-icon {
+    /* No position: relative here — ::after positions relative to .settings-field */
+    display: inline-block;
+    margin-left: 5px;
+    color: rgba(255, 255, 255, 0.2);
+    font-size: 12px;
+    cursor: default;
+    vertical-align: middle;
+    line-height: 1;
+}
+
+.tooltip-icon:hover {
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.tooltip-icon:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    top: 22px;   /* below the label row (~12px font + 4px gap) */
+    left: 0;
+    right: 0;
+    width: auto; /* span full field width, no horizontal overflow */
+    background: #0d1117;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 11px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-weight: normal;
+    font-style: normal;
+    padding: 8px 10px;
+    white-space: normal;
+    line-height: 1.5;
+    z-index: 600;
+    pointer-events: none;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+/* Texture/heightmap size estimate info */
+.texture-size-info {
+    position: absolute;
+    bottom: 28px;
+    right: 10px;
+    background: rgba(20, 20, 20, 0.72);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    padding: 8px 11px;
+    font-size: 11px;
+    font-family: monospace;
+    color: rgba(255, 255, 255, 0.75);
+    line-height: 1.7;
+    white-space: pre;
+    pointer-events: none;
+    display: none;
+    z-index: 5;
+}
+
+.texture-size-info.visible {
+    display: block;
+}
+
+.texture-size-info-title {
+    display: block;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: rgba(255, 255, 255, 0.38);
+    margin-bottom: 3px;
+    font-family: sans-serif;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    #sidebar {
+        position: absolute;
+        right: -350px;
+        top: 0;
+        bottom: 0;
+        transition: right 0.3s ease;
+        z-index: 999;
+    }
+
+    #sidebar.open {
+        right: 0;
+    }
+}

@@ -1,233 +1,120 @@
 #!/usr/bin/env python
 
-from urllib.parse import urlparse
-from urllib.parse import parse_qs
-from urllib.parse import parse_qsl
-import urllib.request
-import uuid
-import uuid
-import ssl
 import os
+import urllib.error
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor
+
 import cv2
-import math
-from utils.param import globalParam
-from PIL import Image
+import numpy as np
+
 
 class Utils:
-	@staticmethod
-	def randomString():
-		return uuid.uuid4().hex.upper()[0:6]
+    @staticmethod
+    def make_quad_key(tile_x, tile_y, level):
+        quadkey = ""
+        for i in range(level):
+            bit = level - i
+            digit = ord('0')
+            mask = 1 << (bit - 1)
+            if (tile_x & mask) != 0:
+                digit += 1
+            if (tile_y & mask) != 0:
+                digit += 2
+            quadkey += chr(digit)
+        return quadkey
 
-	def getChildTiles(x, y, z):
-		childX = x * 2
-		childY = y * 2
-		childZ = z + 1
+    @staticmethod
+    def qualify_url(url, x, y, z, api_key=''):
+        replace_map = {
+            "x": str(x),
+            "y": str(y),
+            "z": str(z),
+            "quad": Utils.make_quad_key(x, y, z),
+            "key": api_key,
+        }
+        for k, value in replace_map.items():
+            url = url.replace(f"{{{k}}}", value)
+        return url
 
-		return [
-			(childX, childY, childZ),
-			(childX+1, childY, childZ),
-			(childX+1, childY+1, childZ),
-			(childX, childY+1, childZ),
-		]
+    @staticmethod
+    def download_file(url, destination, x, y, z, api_key=''):
+        url = Utils.qualify_url(url, x, y, z, api_key)
+        try:
+            req = urllib.request.Request(url, headers={
+                'User-Agent': 'GazeboTerrainGenerator/1.0 (https://github.com/gazebo-terrain-generator)'
+            })
+            with urllib.request.urlopen(req) as resp:
+                with open(destination, 'wb') as f:
+                    f.write(resp.read())
+            return 200
+        except urllib.error.URLError as e:
+            print(e)
+            return e.code if hasattr(e, "code") else -1
 
-	def makeQuadKey(tile_x, tile_y, level):
-		quadkey = ""
-		for i in range(level):
-			bit = level - i
-			digit = ord('0')
-			mask = 1 << (bit - 1)  # if (bit - 1) > 0 else 1 >> (bit - 1)
-			if (tile_x & mask) != 0:
-				digit += 1
-			if (tile_y & mask) != 0:
-				digit += 2
-			quadkey += chr(digit)
-		return quadkey
-
-	@staticmethod
-	def num2deg(xtile, ytile, zoom):
-		n = 2.0 ** zoom
-		lon_deg = xtile / n * 360.0 - 180.0
-		lat_rad = math.atan(math.sinh(math.pi * (1 - 2 * ytile / n)))
-		lat_deg = math.degrees(lat_rad)
-		return (lat_deg, lon_deg)
-
-	@staticmethod
-	def qualifyURL(url, x, y, z):
-
-		scale22 = 23 - (z * 2)
-
-		replaceMap = {
-			"x": str(x),
-			"y": str(y),
-			"z": str(z),
-			"scale:22": str(scale22),
-			"quad": Utils.makeQuadKey(x, y, z),
-		}
-
-		for key, value in replaceMap.items():
-			newKey = str("{" + str(key) + "}")
-			url = url.replace(newKey, value)
-
-		return url
-
-	@staticmethod
-	def mergeQuadTile(quadTiles):
-
-		width = 0
-		height = 0
-
-		for tile in quadTiles:
-			if(tile is not None):
-				width = quadTiles[0].size[0] * 2
-				height = quadTiles[1].size[1] * 2
-				break
-
-		if width == 0 or height == 0:
-			return None
-
-		canvas = Image.new('RGB', (width, height))
-
-		if quadTiles[0] is not None:
-			canvas.paste(quadTiles[0], box=(0,0))
-
-		if quadTiles[1] is not None:
-			canvas.paste(quadTiles[1], box=(width - quadTiles[1].size[0], 0))
-
-		if quadTiles[2] is not None:
-			canvas.paste(quadTiles[2], box=(width - quadTiles[2].size[0], height - quadTiles[2].size[1]))
-
-		if quadTiles[3] is not None:
-			canvas.paste(quadTiles[3], box=(0, height - quadTiles[3].size[1]))
-
-		return canvas
-
-	@staticmethod
-	def downloadFile(url, destination, x, y, z):
-
-		url = Utils.qualifyURL(url, x, y, z)
-
-		code = 0
-
-		# monkey patching SSL certificate issue
-		# DONT use it in a prod/sensitive environment
-		ssl._create_default_https_context = ssl._create_unverified_context
-
-		try:
-			path, response = urllib.request.urlretrieve(url, destination)
-			code = 200
-		except urllib.error.URLError as e:
-			if not hasattr(e, "code"):
-				print(e)
-				code = -1
-			else:
-				code = e.code
-
-		return code
-
-
-	@staticmethod
-	def downloadFileScaled(url, destination, x, y, z, outputScale):
-		
-
-
-		if outputScale == 1:
-			return Utils.downloadFile(url, destination, x, y, z)
-
-		elif outputScale == 2:
-
-			childTiles = Utils.getChildTiles(x, y, z)
-			childImages = []
-
-			for childX, childY, childZ in childTiles:
-				
-				tempFile = Utils.randomString() + ".jpg"
-				tempFilePath = os.path.join(globalParam.TEMPFILE_PATH, tempFile)
-
-				code = Utils.downloadFile(url, tempFilePath, childX, childY, childZ)
-
-				if code == 200:
-					image = Image.open(tempFilePath)
-				else:
-					return code
-
-				childImages.append(image)
-			
-			canvas = Utils.mergeQuadTile(childImages)
-			# canvas.save(destination, "PNG")
-			canvas.save(destination, "JPEG")
-			
-			return 200
-
-		#TODO implement custom scale
 
 class ConcatImage:
-    def __init__(self,**kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def get_x_tile_directories(self, image_dir: str, tile_boundaries: dict) -> list:
-        """
-        Get a numerically sorted list of X-tile directories within tile boundary limits.
-
-        Args:
-            image_dir (str): Path to the zoom level directory containing X-tile directories.
-            tile_boundaries (dict): Dictionary of tile coordinate bounds.
-
-        Returns:
-            list: Sorted list of valid X-tile directory names (as strings).
-        """
-        # List only directory names that are numeric (tile x)
-        dir_list = [d for d in os.listdir(image_dir) if d.isdigit()]
-
-        min_x = min(tile_boundaries["southwest"][0], tile_boundaries["southeast"][0])
-        max_x = max(tile_boundaries["southwest"][0], tile_boundaries["southeast"][0])
-
-        # Filter and sort X directories
-        x_dirs = sorted([d for d in dir_list if min_x <= int(d) <= max_x], key=lambda x: int(x))
-        return x_dirs
-       
-    def process_column_image(self, dir_name, image_dir, tile_boundaries, temp_output_dir):
-        image_list = []
-        max_y = max(tile_boundaries["northwest"][1], tile_boundaries["southwest"][1])
-        min_y = min(tile_boundaries["northwest"][1], tile_boundaries["southwest"][1])
-
-        dir_path = os.path.join(image_dir, dir_name)
-        for image in os.listdir(dir_path):
-            tile_num = int(image.split('.')[0])
-            if min_y <= tile_num <= max_y:
-                image_list.append(os.path.join(dir_path, image))
-
-        image_list.sort()
-        images = [cv2.imread(path) for path in image_list if os.path.exists(path)]
-        if images:
-            output_file = os.path.join(temp_output_dir, dir_name + '.png')
-            cv2.imwrite(output_file, cv2.vconcat(images))
-
     @staticmethod
-    def _run_instance_method(args : tuple) -> None:
+    def stitch_flat_tiles(tiles_dir: str, zoom_level: int, missing_fill=None):
         """
-        Run an instance method with the provided arguments.
-        Args:
-            args (tuple): A tuple containing the instance and its method arguments.
-        Returns:
-            None
-        """
-        instance, dir_name, image_dir, tile_boundaries, temp_output_dir = args
-        instance.process_column_image(dir_name, image_dir, tile_boundaries, temp_output_dir)
-    
-    @staticmethod
-    def are_dimensions_equal(img1, img2) -> bool:
-        """
-        Check if dimensions of two images are equal.
+        Stitch flat tile files ([zoom,y,x].png) from tiles_dir into a single image.
+
+        Tiles at zoom levels other than zoom_level are ignored.
+        Missing tiles within the bounding rectangle are filled with missing_fill
+        (a pre-built numpy array matching one tile's shape), or omitted if None.
 
         Args:
-            img1: First image.
-            img2: Second image.
+            tiles_dir (str): Directory containing flat [zoom,y,x].png tile files.
+            zoom_level (int): Zoom level to filter tiles by.
+            missing_fill: Optional numpy array used to fill gaps (e.g. gray tile).
 
         Returns:
-            bool: True if dimensions are equal, False otherwise.
-        """ 
-        return img1.shape[:2] == img2.shape[:2]
-		
+            tuple: (stitched_image, tile_map, x_min, x_max, y_min, y_max)
+                   stitched_image — cv2 numpy array of the combined image
+                   tile_map       — dict mapping (x, y) → file path
+                   x/y min/max    — bounding tile coordinate extents
+        """
+        tile_map = {}
+        for fname in os.listdir(tiles_dir):
+            if not fname.endswith('.png'):
+                continue
+            parts = fname[1:-5].split(',')  # strip '[' and '].png'
+            z, y, x = int(parts[0]), int(parts[1]), int(parts[2])
+            if zoom_level is not None and z != zoom_level:
+                continue
+            tile_map[(x, y)] = os.path.join(tiles_dir, fname)
 
+        x_min = min(x for x, y in tile_map)
+        x_max = max(x for x, y in tile_map)
+        y_min = min(y for x, y in tile_map)
+        y_max = max(y for x, y in tile_map)
 
+        # Read one tile to get dimensions
+        sample_img = cv2.imread(next(iter(tile_map.values())))
+        tile_h, tile_w = sample_img.shape[:2]
+        n_cols = x_max - x_min + 1
+        n_rows = y_max - y_min + 1
 
+        # Pre-allocate the full output buffer. np.full with a scalar is a single C memset —
+        # no temporary copies. Gray (128) fills missing tiles with no extra logic needed.
+        fill_value = missing_fill[0, 0, 0] if missing_fill is not None else 0
+        stitched_image = np.full((n_rows * tile_h, n_cols * tile_w, 3), fill_value, dtype=np.uint8)
+
+        # Each tile writes to a non-overlapping region so parallel reads are thread-safe.
+        # ThreadPoolExecutor overlaps disk I/O across cores — the main bottleneck at scale.
+        def place_tile(args):
+            (x, y), path = args
+            img = cv2.imread(path)
+            if img is None:
+                return
+            row = y - y_min
+            col = x - x_min
+            stitched_image[row * tile_h:(row + 1) * tile_h, col * tile_w:(col + 1) * tile_w] = img
+
+        with ThreadPoolExecutor() as executor:
+            executor.map(place_tile, tile_map.items())
+
+        return stitched_image, tile_map, x_min, x_max, y_min, y_max
