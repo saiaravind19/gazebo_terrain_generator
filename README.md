@@ -94,8 +94,7 @@ export GAZEBO_TERRAIN_OUTPUT_PATH=/your/custom/path
 
 ```
 {world_name}/
-  {world_name}.world    — Gazebo world file (relative URI, no GZ_SIM_RESOURCE_PATH needed)
-  model.sdf             — terrain model: heightmap, texture, buildings, helipad
+  {world_name}.world    — Gazebo world file (terrain model: heightmap, texture, buildings, helipad)
   model.config          — model metadata (enables model:// usage in other worlds)
   mesh/
     height_map.png      — 16-bit grayscale heightmap (8-bit for Fortress)
