@@ -1,5 +1,9 @@
 import mercantile
 import os, shutil
+from pyproj import Geod
+from shapely.geometry import Polygon as ShapelyPolygon
+
+_geod = Geod(ellps="WGS84")
 
 
 class MapTileUtils:
@@ -93,6 +97,30 @@ class MapTileUtils:
         lat = max(min(lat, 85.0511), -85.0511)
         tile = mercantile.tile(lon, lat, zoom)
         return tile.x, tile.y
+
+    @staticmethod
+    def polygon_area_sq_m(vertices: list) -> float:
+        """Return the geodesic area in m² for a polygon defined by [lng, lat] vertices."""
+        poly = ShapelyPolygon(vertices)
+        area, _ = _geod.geometry_area_perimeter(poly)
+        return abs(area)
+
+    @staticmethod
+    def count_polygon_tiles(vertices: list, zoom_level: int) -> int:
+        """Count satellite tiles at zoom_level that intersect the polygon."""
+        poly = ShapelyPolygon(vertices)
+        bounds = MapTileUtils.bounds_from_polygon(vertices)
+        count = 0
+        for tile in mercantile.tiles(bounds[0], bounds[1], bounds[2], bounds[3], zooms=zoom_level):
+            b = mercantile.bounds(tile)
+            tile_poly = ShapelyPolygon([
+                [b.west, b.south], [b.east, b.south],
+                [b.east, b.north], [b.west, b.north],
+                [b.west, b.south],
+            ])
+            if not poly.disjoint(tile_poly):
+                count += 1
+        return count
 
     @staticmethod
     def dir_check(path: str, remove_existing: bool = False) -> None:

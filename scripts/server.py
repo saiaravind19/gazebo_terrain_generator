@@ -237,6 +237,16 @@ def estimate_texture_sizes():
 	})
 
 
+@app.route('/polygon-info', methods=['POST'])
+def polygon_info():
+	postvars = request.form
+	polygon_vertices = json.loads(postvars['polygonVertices'])
+	zoom_level = int(postvars['zoomLevel'])
+	area_sq_m = MapTileUtils.polygon_area_sq_m(polygon_vertices)
+	tile_count = MapTileUtils.count_polygon_tiles(polygon_vertices, zoom_level)
+	return jsonify({"code": 200, "area_sq_m": area_sq_m, "tile_count": tile_count})
+
+
 @app.route('/download-world', methods=['GET'])
 def download_world():
 	map_name = request.args.get('mapName', '')

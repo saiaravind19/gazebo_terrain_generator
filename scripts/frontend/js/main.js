@@ -331,6 +331,7 @@
     function flyToLocation(lat, lng) {
         draw.deleteAll();
         clearCoordinateOverlays();
+        updateTextureSizeEstimate();
         setGridVisible(false);
         map.flyTo({ center: [lng, lat], zoom: 15 });
         if (centerMarker) {
@@ -632,10 +633,9 @@
         drawButton.title = 'Draw polygon';
         drawButton.innerHTML = '<i class="fas fa-draw-polygon"></i>';
         drawButton.onclick = function () {
-            // Clear existing polygons
             draw.deleteAll();
             clearCoordinateOverlays();
-            // Start drawing
+            updateTextureSizeEstimate();
             draw.changeMode('draw_polygon');
         };
 
@@ -1087,7 +1087,19 @@
         const modeLabel = isAuto ? 'Auto' : 'Fixed';
         const hmLine = 'Heightmap: ' + result.natural_heightmap_width + 'x' + result.natural_heightmap_height + 'px -> ' + modeLabel + ': ' + resolvedSize + 'x' + resolvedSize;
         const texLine = 'Texture: ~' + result.natural_texture_padded + 'x' + result.natural_texture_padded + 'px';
-        infoEl.innerHTML = '<span class="texture-size-info-title">Estimated output sizes</span>' + hmLine + '\n' + texLine;
+
+        let areaLine = '';
+        if (result.areaSqM !== undefined) {
+            areaLine = result.areaSqM >= 1e6
+                ? 'Area: ' + (result.areaSqM / 1e6).toFixed(2) + ' km²'
+                : 'Area: ' + (result.areaSqM / 1e4).toFixed(2) + ' ha';
+        }
+        const tilesLine = result.tileCount !== undefined
+            ? 'Tiles: ' + result.tileCount + ' @ zoom ' + config.zoomLevel
+            : '';
+
+        infoEl.innerHTML = '<span class="texture-size-info-title">Estimated output sizes</span>'
+            + [tilesLine, areaLine, hmLine, texLine].filter(Boolean).join('\n');
         infoEl.classList.add('visible');
     }
 
@@ -1106,10 +1118,21 @@
         data.append('polygonVertices', JSON.stringify(coords));
         data.append('zoomLevel', config.zoomLevel);
         data.append('tileSource', config.tileSource);
+        const infoData = new FormData();
+        infoData.append('polygonVertices', JSON.stringify(coords));
+        infoData.append('zoomLevel', config.zoomLevel);
+
         try {
-            const resp = await fetch('/estimate-texture-sizes', { method: 'POST', body: data });
-            const result = await resp.json();
+            const [estimateResp, infoResp] = await Promise.all([
+                fetch('/estimate-texture-sizes', { method: 'POST', body: data }),
+                fetch('/polygon-info', { method: 'POST', body: infoData }),
+            ]);
+            const [result, info] = await Promise.all([estimateResp.json(), infoResp.json()]);
             if (result.code === 200) {
+                if (info.code === 200) {
+                    result.tileCount = info.tile_count;
+                    result.areaSqM = info.area_sq_m;
+                }
                 lastEstimateResult = result;
                 renderEstimateInfo(result);
             }
