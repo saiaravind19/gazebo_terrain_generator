@@ -127,7 +127,16 @@ ign gazebo /tmp/gazebo_terrain_generator/{world_name}/{world_name}.world
 
 Or unzip the downloaded archive and run with the local path.
 
+## Sample Worlds Example
 
+1. Apple Tech park
+```bash
+gz sim <path to gazbo_terrain_generator>/sample_worlds/applepark/applepark.world
+```
+2. Joshimath
+```bash
+gz sim <path to gazbo_terrain_generator>/sample_worlds/Joshimath/Joshimath.world
+```
 
 ## Contributors
 
