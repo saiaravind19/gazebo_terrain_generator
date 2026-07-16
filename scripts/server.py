@@ -268,6 +268,10 @@ def download_world():
 			fpath = os.path.join(map_dir, fname)
 			if os.path.isfile(fpath) and not fname.endswith('.zip'):
 				zf.write(fpath, f"{map_name}/{fname}")
+		mesh_path = os.path.join(map_dir, 'mesh')
+		if os.path.isdir(mesh_path):
+			for fname in os.listdir(mesh_path):
+				zf.write(os.path.join(mesh_path, fname), f"{map_name}/mesh/{fname}")
 		if include_intermediary:
 			tiles_path = os.path.join(map_dir, 'tiles')
 			if os.path.isdir(tiles_path):
@@ -285,5 +289,10 @@ def serve_static(path):
 	return send_from_directory(file_dir, path, mimetype=mime_type)
 
 if __name__ == '__main__':
-	print("Starting Flask server...")
-	app.run(host='127.0.0.1', port=8080, threaded=True)
+	import argparse
+	parser = argparse.ArgumentParser(description="Gazebo terrain generator server")
+	parser.add_argument('--host', default='127.0.0.1', help="Host to bind (default: 127.0.0.1)")
+	parser.add_argument('--port', type=int, default=8080, help="Port to listen on (default: 8080)")
+	args = parser.parse_args()
+	print(f"Starting Flask server on {args.host}:{args.port}...")
+	app.run(host=args.host, port=args.port, threaded=True)
