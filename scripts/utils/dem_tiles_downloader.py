@@ -42,14 +42,14 @@ def download_tile_image(args: tuple) -> None:
     Download a single DEM tile image and save it to the specified directory.
     Args:
         args (tuple): A tuple containing zoom level, x tile number, y tile number,
-                      output directory, and Mapbox API key.
+                      output directory, and MapTiler API key.
     Returns:
         None
     """
     zoom, tile_x, tile_y, output_dir, api_key = args
     tile_url = (
-        f"https://api.mapbox.com/raster/v1/mapbox.mapbox-terrain-dem-v1/"
-        f"{zoom}/{tile_x}/{tile_y}.webp?sku=101CUGorpzzyK&access_token={api_key}"
+        f"https://api.maptiler.com/tiles/terrain-rgb-v2/"
+        f"{zoom}/{tile_x}/{tile_y}.webp?key={api_key}"
     )
     img = fetch_image_from_url(tile_url)
     if img is not None:
@@ -66,9 +66,9 @@ def download_dem_data(bound_array, output_directory, zoom: int, api_key: str) ->
         bound_array: Bounding box dict with 'northwest' and 'southeast' keys.
         output_directory (str): The directory where the downloaded DEM tiles will be saved.
         zoom (int): Zoom level for DEM tiles. Should be min(satellite_zoom, 13) —
-                    Mapbox terrain-dem-v1 source data is ~30m (SRTM), so zoom > 13
+                    MapTiler terrain-rgb-v2 source data is ~30m (SRTM), so zoom > 13
                     yields no additional real-world elevation detail.
-        api_key (str): Mapbox API key.
+        api_key (str): MapTiler API key.
     Returns:
         None
     """

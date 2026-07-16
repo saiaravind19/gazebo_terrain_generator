@@ -13,8 +13,9 @@ from multiprocessing import Pool, cpu_count
 
 class BuildingDownloader:
     """
-    Downloads building data from Mapbox Vector Tiles for a given geographic area.
-    Uses Mapbox's composite tileset which includes building footprints and heights from OpenStreetMap.
+    Downloads building data from MapTiler Vector Tiles for a given geographic area.
+    Uses MapTiler's OpenMapTiles (v3) tileset whose 'building' layer includes
+    footprints and heights (render_height / render_min_height) from OpenStreetMap.
     """
 
     def __init__(self):
@@ -22,7 +23,7 @@ class BuildingDownloader:
         Initialize the building downloader.
 
         Args:
-            api_key: Mapbox API key. If None, uses the global parameter.
+            api_key: MapTiler API key. If None, uses the global parameter.
         """
 
     @staticmethod
@@ -34,14 +35,14 @@ class BuildingDownloader:
             zoom: Zoom level
             tile_x: Tile X coordinate
             tile_y: Tile Y coordinate
-            api_key: Mapbox API key.
+            api_key: MapTiler API key.
 
         Returns:
             GeoJSON FeatureCollection with building polygons
         """
-        base_url = "https://api.mapbox.com/v4/mapbox.mapbox-streets-v8"
+        base_url = "https://api.maptiler.com/tiles/v3"
 
-        url = f"{base_url}/{zoom}/{tile_x}/{tile_y}.vector.pbf?access_token={api_key}"
+        url = f"{base_url}/{zoom}/{tile_x}/{tile_y}.pbf?key={api_key}"
 
         try:
             response = requests.get(url, timeout=30)

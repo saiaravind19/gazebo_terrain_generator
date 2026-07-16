@@ -1,4 +1,8 @@
-# Gazebo Terrain Generator  [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/saiaravind19/gazebo_terrain_generator)
+# Gazebo Terrain Generator ~ Forked
+
+### Note: This fork makes use of maptiler
+
+----
 
 A super easy-to-use tool for generating 3D Gazebo terrain using real-world elevation and satellite data. Draw a polygon on a map, set a spawn location, and get a ready-to-use `.world` file with a textured heightmap and optional 3D buildings.
 
@@ -21,8 +25,8 @@ A super easy-to-use tool for generating 3D Gazebo terrain using real-world eleva
 
 ## 🔑 Prerequisites
 
-- **Mapbox API Key** — Required for satellite imagery, elevation data, and geocoding. Sign up at [mapbox.com](https://www.mapbox.com/), copy your public token (`pk.eyJ1...`), then paste it in the web UI under **Settings → Mapbox API Key**.
-  > Your token is stored in the browser only never server-side.
+- **MapTiler API Key** — Required for satellite imagery, elevation data, and geocoding. Sign up at [maptiler.com](https://www.maptiler.com/cloud/), copy your API key from your account, then paste it in the web UI under **Settings → MapTiler API Key**.
+  > Your key is stored in the browser only never server-side.
 
 - **Python package manager (`uv`)** — Required to run the project.
 

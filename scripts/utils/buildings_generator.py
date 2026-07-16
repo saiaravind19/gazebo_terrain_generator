@@ -40,7 +40,7 @@ class GeoJSONToDAE:
             return None
 
     def get_height(self, props: dict) -> float:
-        for tag in ["height", "building:height", "ele", "min_height"]:
+        for tag in ["render_height", "height", "building:height", "ele", "min_height"]:
             val = self.clean_height(props.get(tag))
             if val and val > 0:
                 return val

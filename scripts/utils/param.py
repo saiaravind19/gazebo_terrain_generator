@@ -17,10 +17,12 @@ class GlobalParam:
     # Path to the SDF/XML world templates directory
     TEMPLATE_DIR_PATH           = str(Path(__file__).resolve().parents[2] / 'templates')
 
-    # DEM zoom cap — Mapbox Terrain-DEM-v1 has real SRTM data only up to zoom 13
+    # DEM zoom cap — MapTiler terrain-rgb-v2 (SRTM-based) has real elevation
+    # detail only up to ~zoom 13 (tileset maxzoom is 14)
     DEM_RESOLUTION              = 13
 
-    # Building vector tile zoom — Mapbox streets-v8 has full footprint detail at zoom 15
+    # Building vector tile zoom — MapTiler OpenMapTiles (v3) serves building
+    # footprints with full detail at zoom 15
     DEM_BUILDING_RESOLUTION     = 15
 
     # Valid Gazebo heightmap sizes (must be 2^n+1)

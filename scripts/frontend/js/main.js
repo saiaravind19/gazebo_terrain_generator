@@ -3,7 +3,7 @@
     'use strict';
 
     let map = null;
-    let mapboxApiKey = null;
+    let maptilerApiKey = null;
     let centerMarker = null;
     let draw = null;
     let coordinateOverlays = [];
@@ -16,13 +16,17 @@
     let pollingTimer = null;
     const GRID_LAYER_ID = 'grid-preview';
     const STORAGE_KEY = 'gazebo_terrain_generator_settings';
+    // Mapbox GL JS v2 needs a truthy accessToken to initialize, but the map is
+    // rendered from a MapTiler style whose URL carries its own key, so the token
+    // itself is never used for tile/style requests.
+    const MAPBOX_GL_PLACEHOLDER_TOKEN = 'maptiler';
 
     const DEFAULT_CONFIG = {
         zoomLevel: 17,
         includeBuildings: true,
         includeHelipad: false,
         helipadHeight: 3,
-        tileSource: 'https://mt0.google.com/vt?lyrs=s&x={x}&s=&y={y}&z={z}',
+        tileSource: 'https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key={key}',
         parallelDownloads: 4,
         gazeboVersion: 'harmonic',
         targetHeightmapSize: 'auto'
@@ -31,7 +35,7 @@
     const config = loadConfig();
 
     const TILE_SOURCES = [
-        { label: 'Mapbox Satellite', url: 'https://api.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}@2x.jpg?access_token={key}' },
+        { label: 'MapTiler Satellite', url: 'https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key={key}' },
         null,
         { label: 'Bing Maps', url: 'http://ecn.t0.tiles.virtualearth.net/tiles/r{quad}.jpeg?g=129&mkt=en&stl=H' },
         { label: 'Bing Maps Satellite', url: 'http://ecn.t0.tiles.virtualearth.net/tiles/a{quad}.jpeg?g=129&mkt=en&stl=H' },
@@ -83,21 +87,21 @@
         document.getElementById('setting-parallel-downloads').value = config.parallelDownloads;
         document.getElementById('setting-gazebo-version').value = config.gazeboVersion;
         document.getElementById('setting-target-heightmap-size').value = config.targetHeightmapSize;
-        updateMapboxKeyStatus(loadMapboxKey());
+        updateMaptilerKeyStatus(loadMaptilerKey());
 
         const matchedSource = TILE_SOURCES.find(s => s && s.url === config.tileSource);
         document.getElementById('setting-source-display').textContent =
             matchedSource ? matchedSource.label : 'Custom';
     }
 
-    const MAPBOX_KEY_STORAGE_KEY = 'gazebo_terrain_generator_mapbox_key';
+    const MAPTILER_KEY_STORAGE_KEY = 'gazebo_terrain_generator_maptiler_key';
 
-    function loadMapboxKey() {
-        return localStorage.getItem(MAPBOX_KEY_STORAGE_KEY) || '';
+    function loadMaptilerKey() {
+        return localStorage.getItem(MAPTILER_KEY_STORAGE_KEY) || '';
     }
 
-    function saveMapboxKey(key) {
-        localStorage.setItem(MAPBOX_KEY_STORAGE_KEY, key);
+    function saveMaptilerKey(key) {
+        localStorage.setItem(MAPTILER_KEY_STORAGE_KEY, key);
     }
 
     function openApikeyModal(onSave) {
@@ -107,8 +111,8 @@
         const confirmBtn = document.getElementById('apikey-modal-confirm');
         const cancelBtn = document.getElementById('apikey-modal-cancel');
 
-        const hasExistingKey = !!loadMapboxKey();
-        input.value = hasExistingKey ? loadMapboxKey() : '';
+        const hasExistingKey = !!loadMaptilerKey();
+        input.value = hasExistingKey ? loadMaptilerKey() : '';
         errorEl.style.display = 'none';
         cancelBtn.style.display = hasExistingKey ? '' : 'none';
 
@@ -125,20 +129,20 @@
 
             try {
                 const resp = await fetch(
-                    `https://api.mapbox.com/styles/v1/mapbox/satellite-v9?access_token=${encodeURIComponent(key)}`
+                    `https://api.maptiler.com/maps/hybrid/style.json?key=${encodeURIComponent(key)}`
                 );
-                if (resp.status === 401) {
+                if (resp.status === 401 || resp.status === 403) {
                     throw new Error('Invalid API key — please check and try again.');
                 } else if (!resp.ok) {
                     throw new Error(`Validation failed (HTTP ${resp.status}).`);
                 }
                 overlay.classList.remove('open');
-                saveMapboxKey(key);
-                updateMapboxKeyStatus(key);
+                saveMaptilerKey(key);
+                updateMaptilerKeyStatus(key);
                 if (onSave) onSave(key);
             } catch (e) {
                 const msg = (e instanceof TypeError)
-                    ? 'Could not reach Mapbox API - check if your key is valid and make sure you are connected to internet.'
+                    ? 'Could not reach MapTiler API - check if your key is valid and make sure you are connected to internet.'
                     : e.message;
                 errorEl.textContent = msg;
                 errorEl.style.display = 'block';
@@ -156,9 +160,9 @@
         cancelBtn.onclick = cancel;
     }
 
-    function updateMapboxKeyStatus(key) {
-        const btn = document.getElementById('setting-mapbox-key-btn');
-        const status = document.getElementById('setting-mapbox-key-status');
+    function updateMaptilerKeyStatus(key) {
+        const btn = document.getElementById('setting-maptiler-key-btn');
+        const status = document.getElementById('setting-maptiler-key-status');
         if (key) {
             status.textContent = 'Configured';
             btn.classList.add('key-set');
@@ -170,29 +174,29 @@
 
     // Initialize the application
     async function init() {
-        mapboxApiKey = loadMapboxKey();
-        updateMapboxKeyStatus(mapboxApiKey);
+        maptilerApiKey = loadMaptilerKey();
+        updateMaptilerKeyStatus(maptilerApiKey);
 
-        if (mapboxApiKey) {
+        if (maptilerApiKey) {
             try {
                 const resp = await fetch(
-                    `https://api.mapbox.com/styles/v1/mapbox/satellite-v9?access_token=${encodeURIComponent(mapboxApiKey)}`
+                    `https://api.maptiler.com/maps/hybrid/style.json?key=${encodeURIComponent(maptilerApiKey)}`
                 );
-                if (!resp.ok) mapboxApiKey = '';
+                if (!resp.ok) maptilerApiKey = '';
             } catch (e) {
-                mapboxApiKey = '';
+                maptilerApiKey = '';
             }
         }
 
-        if (!mapboxApiKey) {
+        if (!maptilerApiKey) {
             openApikeyModal(function (key) {
-                mapboxApiKey = key;
-                mapboxgl.accessToken = key;
+                maptilerApiKey = key;
+                mapboxgl.accessToken = MAPBOX_GL_PLACEHOLDER_TOKEN;
                 initializeMap();
             });
             return;
         }
-        mapboxgl.accessToken = mapboxApiKey;
+        mapboxgl.accessToken = MAPBOX_GL_PLACEHOLDER_TOKEN;
         initializeMap();
     }
 
@@ -200,7 +204,7 @@
     function initializeMap() {
         map = new mapboxgl.Map({
             container: 'map',
-            style: 'mapbox://styles/mapbox/satellite-streets-v12',
+            style: `https://api.maptiler.com/maps/hybrid/style.json?key=${maptilerApiKey}`,
             center: [-122.4194, 37.7749], // Default: San Francisco
             zoom: 12
         });
@@ -312,9 +316,9 @@
             return;
         }
 
-        // Fall back to Mapbox Geocoding API
+        // Fall back to MapTiler Geocoding API
         try {
-            const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(value)}.json?limit=1&access_token=${mapboxApiKey}`;
+            const url = `https://api.maptiler.com/geocoding/${encodeURIComponent(value)}.json?limit=1&key=${maptilerApiKey}`;
             const resp = await fetch(url);
             const data = await resp.json();
             if (data.features && data.features.length > 0) {
@@ -772,7 +776,7 @@
     }
 
     async function fetchModelName(lng, lat) {
-        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?types=locality,place,region&limit=1&access_token=${mapboxApiKey}`;
+        const url = `https://api.maptiler.com/geocoding/${lng},${lat}.json?limit=1&key=${maptilerApiKey}`;
         const resp = await fetch(url);
         const data = await resp.json();
         if (data.features && data.features.length > 0) {
@@ -881,7 +885,7 @@
             tileData.append('z', tile.z);
             tileData.append('mapName', modelName);
             tileData.append('source', source);
-            tileData.append('mapboxApiKey', mapboxApiKey);
+            tileData.append('apiKey', maptilerApiKey);
 
             try {
                 const resp = await fetch('/download-tile', { method: 'POST', body: tileData });
@@ -910,7 +914,7 @@
             endData.append('helipadHeight', config.helipadHeight);
             endData.append('gazeboVersion', config.gazeboVersion);
             endData.append('targetHeightmapSize', config.targetHeightmapSize);
-            endData.append('mapboxApiKey', mapboxApiKey);
+            endData.append('apiKey', maptilerApiKey);
             const endResp = await fetch('/end-download', { method: 'POST', body: endData });
             const endResult = await endResp.json();
             if (endResult.code !== 200) throw new Error('end-download failed');
@@ -1234,10 +1238,10 @@
             renderEstimateInfo(lastEstimateResult);
         });
 
-        document.getElementById('setting-mapbox-key-btn').addEventListener('click', function () {
+        document.getElementById('setting-maptiler-key-btn').addEventListener('click', function () {
             openApikeyModal(function (key) {
-                mapboxApiKey = key;
-                mapboxgl.accessToken = key;
+                maptilerApiKey = key;
+                mapboxgl.accessToken = MAPBOX_GL_PLACEHOLDER_TOKEN;
                 if (!map) initializeMap();
             });
         });

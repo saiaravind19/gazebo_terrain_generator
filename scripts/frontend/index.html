@@ -117,9 +117,9 @@
                         </div>
 
                         <div class="settings-field settings-field--row">
-                            <label>Mapbox API Key <i class="fas fa-circle-info tooltip-icon" data-tooltip="Required for satellite imagery, elevation data, and geocoding. Stored in your browser only - never sent to this server."></i></label>
-                            <button id="setting-mapbox-key-btn" class="mapbox-key-btn">
-                                <span id="setting-mapbox-key-status">Not set</span>
+                            <label>MapTiler API Key <i class="fas fa-circle-info tooltip-icon" data-tooltip="Required for satellite imagery, elevation data, and geocoding. Stored in your browser only - never sent to this server."></i></label>
+                            <button id="setting-maptiler-key-btn" class="mapbox-key-btn">
+                                <span id="setting-maptiler-key-status">Not set</span>
                                 <i class="fas fa-edit"></i>
                             </button>
                         </div>
@@ -147,10 +147,10 @@
         <div class="name-modal">
             <div class="name-modal-header">
                 <i class="fas fa-key"></i>
-                <h2>Mapbox API Key</h2>
+                <h2>MapTiler API Key</h2>
             </div>
-            <p class="name-modal-hint">Paste your Mapbox public token below.<br>It is stored locally in your browser only.</p>
-            <textarea id="apikey-modal-input" class="apikey-modal-input" placeholder="pk.eyJ1Ij..." rows="4" spellcheck="false"></textarea>
+            <p class="name-modal-hint">Paste your MapTiler Cloud API key below.<br>It is stored locally in your browser only.</p>
+            <textarea id="apikey-modal-input" class="apikey-modal-input" placeholder="Your MapTiler API key..." rows="4" spellcheck="false"></textarea>
             <p id="apikey-modal-error" class="apikey-modal-error" style="display:none"></p>
             <div class="name-modal-actions">
                 <button id="apikey-modal-cancel" class="name-modal-btn name-modal-btn--cancel">Cancel</button>

@@ -108,7 +108,7 @@ def download_tile():
 	zoom = int(postvars['z'])
 	map_name = str(postvars['mapName'])
 	source = str(postvars['source'])
-	api_key = str(postvars.get('mapboxApiKey', ''))
+	api_key = str(postvars.get('apiKey', ''))
 
 	file_path = os.path.join(get_map_dir(map_name), 'tiles', f"[{zoom},{y},{x}].png")
 
@@ -182,7 +182,7 @@ def end_download():
 	helipad_height = float(postvars.get('helipadHeight', 3.0))
 	gazebo_version = postvars.get('gazeboVersion', 'harmonic')
 	heightmap_z_resolution = 255 if gazebo_version == 'fortress' else 65535
-	api_key = postvars.get('mapboxApiKey', '')
+	api_key = postvars.get('apiKey', '')
 	dem_resolution = min(zoom_level, GlobalParam.DEM_RESOLUTION)
 
 	target_heightmap_size_raw = postvars.get('targetHeightmapSize', 'auto')
@@ -211,15 +211,16 @@ def estimate_texture_sizes():
 	dem_resolution = min(zoom_level, GlobalParam.DEM_RESOLUTION)
 	bounds = MapTileUtils.bounds_from_polygon(polygon_vertices)
 
-	# DEM tiles from Mapbox terrain-dem-v1 are 512×512px
+	# DEM tiles from MapTiler terrain-rgb-v2 are 512×512px
 	dem_tiles = MapTileUtils.get_max_tilenumber(bounds, dem_resolution)
 	dem_x_count = dem_tiles['northeast'][0] - dem_tiles['northwest'][0] + 1
 	dem_y_count = dem_tiles['southwest'][1] - dem_tiles['northwest'][1] + 1
 	natural_hm_w = dem_x_count * 512
 	natural_hm_h = dem_y_count * 512
 
-	# Satellite tiles: 512px if @2x URL, 256px otherwise
-	sat_tile_px = 512 if '@2x' in tile_source else 256
+	# Satellite tiles: MapTiler satellite-v2 tiles are 512px; other providers
+	# are 512px only when the URL requests @2x, otherwise 256px
+	sat_tile_px = 512 if ('@2x' in tile_source or 'maptiler.com' in tile_source) else 256
 	sat_tiles = MapTileUtils.get_max_tilenumber(bounds, zoom_level)
 	sat_x_count = sat_tiles['northeast'][0] - sat_tiles['northwest'][0] + 1
 	sat_y_count = sat_tiles['southwest'][1] - sat_tiles['northwest'][1] + 1

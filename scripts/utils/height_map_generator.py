@@ -60,7 +60,8 @@ class HeightmapGenerator(ConcatImage):
             b, g, r = dem_img[py, px]
             b, g, r = float(b), float(g), float(r)
             # convert pixel value to elevation in meters
-            # reference: https://docs.mapbox.com/data/tilesets/reference/mapbox-terrain-dem-v1/
+            # MapTiler terrain-rgb-v2 uses the same encoding as Mapbox Terrain-RGB:
+            # reference: https://docs.maptiler.com/cloud/api/tiles/
             height = ((r * 256 * 256 + g * 256 + b) * 0.1) - 10000
             return height
         else:
