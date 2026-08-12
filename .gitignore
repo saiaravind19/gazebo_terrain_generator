@@ -1,2 +1,5 @@
 .venv/
 *.pyc
+generated_assets
+worlds/
+assets
