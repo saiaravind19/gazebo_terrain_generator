@@ -16,15 +16,15 @@ from shapely.geometry import mapping, shape
 from shapely.ops import transform as shp_transform
 from shapely.validation import make_valid
 
-from pipeline.bbox import BoundingBox, parse_bbox
-from pipeline import gba as gba_mod
-from pipeline import osm_raw as osm_raw_mod
-from pipeline import osm2world as osm2world_mod
-from pipeline import heightmap as heightmap_mod
-from pipeline import world as world_mod
-from pipeline import terrain_wrap as terrain_wrap_mod
+from .bbox import BoundingBox, parse_bbox
+from . import gba as gba_mod
+from . import osm_raw as osm_raw_mod
+from . import osm2world as osm2world_mod
+from . import heightmap as heightmap_mod
+from . import world as world_mod
+from . import terrain_wrap as terrain_wrap_mod
 
-REPO_ROOT = Path(__file__).resolve().parent
+REPO_ROOT = Path(__file__).resolve().parent.parent
 ASSETS_DIR = REPO_ROOT / "generated_assets"
 DEM_DIR = ASSETS_DIR / "dem"
 OSM_TILES_DIR = ASSETS_DIR / "osm" / "tiles"
