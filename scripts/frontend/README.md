@@ -4,8 +4,9 @@ Single-page web UI for the Gazebo Terrain Generator, served by the Flask backend
 
 ## Stack
 
-- [Mapbox GL JS](https://docs.mapbox.com/mapbox-gl-js/) — map rendering and satellite imagery
-- [Mapbox GL Draw](https://github.com/mapbox/mapbox-gl-draw) — polygon selection tool
+- [MapLibre GL JS](https://maplibre.org/) — open-source map rendering (key-less fork of Mapbox GL JS); base imagery from ESRI World Imagery
+- [Mapbox GL Draw](https://github.com/mapbox/mapbox-gl-draw) — polygon selection tool (used programmatically on top of MapLibre)
+- [Nominatim](https://nominatim.org/) — OpenStreetMap place-name search / reverse geocoding
 - [Turf.js](https://turfjs.org/) — client-side geospatial utilities
 - [Toastify](https://github.com/apvarun/toastify-js) — toast notifications
 - [Font Awesome](https://fontawesome.com/) — icons

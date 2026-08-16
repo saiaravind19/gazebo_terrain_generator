@@ -11,7 +11,7 @@ A super easy-to-use tool for generating 3D Gazebo terrain using real-world eleva
 - **Real-World Terrain**: Generate 3D Gazebo worlds from actual elevation and satellite imagery of any location on Earth.
 - **3D Buildings**: Toggle OSM building footprints extruded as 3D meshes.
 - **Configurable Spawn Location**: Drag a marker on the map to set the robot spawn point — GPS coordinates are baked in automatically.
-- **Satellite Texture**: Stitched from configurable tile sources (Google, OSM, etc.).
+- **Satellite Texture**: Stitched from configurable tile sources (ESRI World Imagery by default; Bing, OSM, etc.).
 - **High-Precision Heightmap**: 16-bit (~0.008m precision), 8-bit for Fortress compatibility.
 - **Downloadable Output**: Get a `.zip` — unzip anywhere and run.
 
@@ -21,8 +21,14 @@ A super easy-to-use tool for generating 3D Gazebo terrain using real-world eleva
 
 ## 🔑 Prerequisites
 
-- **Mapbox API Key** — Required for satellite imagery, elevation data, and geocoding. Sign up at [mapbox.com](https://www.mapbox.com/), copy your public token (`pk.eyJ1...`), then paste it in the web UI under **Settings → Mapbox API Key**.
-  > Your token is stored in the browser only never server-side.
+- **No API key needed** — all map data comes from free, open sources, so there's nothing to sign up for:
+  | Data | Source |
+  |---|---|
+  | Elevation (heightmap) | [AWS Terrain Tiles](https://registry.opendata.aws/terrain-tiles/) (Mapzen/Tilezen, SRTM-backed) |
+  | Satellite texture | [ESRI World Imagery](https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9) (configurable in Settings) |
+  | 3D buildings | [OpenStreetMap](https://www.openstreetmap.org/) via the [Overpass API](https://overpass-api.de/) |
+  | Map & place search | OpenStreetMap tiles + [Nominatim](https://nominatim.org/) geocoding |
+  > Please respect each provider's usage policy — these are shared community services, best suited to reasonable, non-bulk use.
 
 - **Python package manager (`uv`)** — Required to run the project.
 
@@ -77,7 +83,7 @@ Open [http://localhost:8080](http://localhost:8080) in your browser.
 | Include Buildings | On | Download OSM footprints and extrude as 3D meshes |
 | Include Helipad | Off | Adds a helipad at the spawn location |
 | Helipad Height | 3.0 m | Height above ground (only relevant when helipad is enabled) |
-| Map Tile Source | Google Maps Satellite | Tile provider URL template |
+| Map Tile Source | ESRI World Imagery | Tile provider URL template |
 | Parallel Downloads | 4 | Concurrent tile download threads |
 | Target Gazebo Version | Harmonic (and above) | Controls heightmap bit depth. Use **Fortress ** for Ignition 6 |
 

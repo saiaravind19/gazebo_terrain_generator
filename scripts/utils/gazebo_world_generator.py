@@ -321,10 +321,20 @@ class GazeboTerrainGenerator(HeightmapGenerator, OrthoGenerator):
             progress("Computing world dimensions...")
             (size_x, size_y, size_z, pose_x, pose_y, pose_z) = self.get_world_dimensions()
 
-            if self.include_buildings:
+            street_map = os.path.join(self.tile_path, 'buildings.geojson')
+            has_buildings = False
+            if self.include_buildings and os.path.isfile(street_map):
+                try:
+                    with open(street_map) as f:
+                        has_buildings = len(json.load(f).get('features', [])) > 0
+                except Exception:
+                    has_buildings = False
+                if not has_buildings:
+                    progress("No OSM buildings found in this area — skipping building mesh.")
+
+            if self.include_buildings and has_buildings:
                 progress("Baking building models...")
                 origin_coord = self.get_true_origin()
-                street_map = os.path.join(self.tile_path, 'buildings.geojson')
                 output_dae_file = os.path.join(self.tile_path, 'mesh', 'buildings.dae')
                 bound_array = self.boundaries.split(',')
                 lat_min = float(bound_array[1])

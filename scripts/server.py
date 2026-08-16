@@ -32,7 +32,7 @@ def compute_auto_heightmap_size(bounds, dem_resolution):
 	dem_tiles = MapTileUtils.get_max_tilenumber(bounds, dem_resolution)
 	x_count = dem_tiles['northeast'][0] - dem_tiles['northwest'][0] + 1
 	y_count = dem_tiles['southwest'][1] - dem_tiles['northwest'][1] + 1
-	natural_max = max(x_count * 512, y_count * 512)
+	natural_max = max(x_count * GlobalParam.DEM_TILE_PX, y_count * GlobalParam.DEM_TILE_PX)
 	return HeightmapGenerator.get_nearest_map_size(natural_max)
 
 
@@ -63,11 +63,11 @@ def process_end_download(map_name, bounds, zoom_level, dem_resolution, include_b
 
 		progress("Downloading elevation data (DEM)...")
 		dem_path = os.path.join(map_dir, 'dem')
-		download_dem_data(true_boundaries, dem_path, dem_resolution, api_key)
+		download_dem_data(true_boundaries, dem_path, dem_resolution)
 
 		if include_buildings:
 			progress("Downloading building footprint data...")
-			download_streetmap_data(true_boundaries, os.path.join(map_dir, 'building_tiles'), map_dir, api_key=api_key, polygon_vertices=polygon_vertices)
+			download_streetmap_data(true_boundaries, os.path.join(map_dir, 'building_tiles'), map_dir, polygon_vertices=polygon_vertices)
 
 		terrain_generator = GazeboTerrainGenerator(map_dir, include_buildings, heightmap_z_resolution, gazebo_version, target_heightmap_size, include_helipad=include_helipad, helipad_height=helipad_height)
 		terrain_generator.generate_gazebo_world(progress_cb=progress)
@@ -211,12 +211,12 @@ def estimate_texture_sizes():
 	dem_resolution = min(zoom_level, GlobalParam.DEM_RESOLUTION)
 	bounds = MapTileUtils.bounds_from_polygon(polygon_vertices)
 
-	# DEM tiles from Mapbox terrain-dem-v1 are 512×512px
+	# DEM tiles from AWS Terrain Tiles (terrarium) are 256×256px
 	dem_tiles = MapTileUtils.get_max_tilenumber(bounds, dem_resolution)
 	dem_x_count = dem_tiles['northeast'][0] - dem_tiles['northwest'][0] + 1
 	dem_y_count = dem_tiles['southwest'][1] - dem_tiles['northwest'][1] + 1
-	natural_hm_w = dem_x_count * 512
-	natural_hm_h = dem_y_count * 512
+	natural_hm_w = dem_x_count * GlobalParam.DEM_TILE_PX
+	natural_hm_h = dem_y_count * GlobalParam.DEM_TILE_PX
 
 	# Satellite tiles: 512px if @2x URL, 256px otherwise
 	sat_tile_px = 512 if '@2x' in tile_source else 256

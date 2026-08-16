@@ -124,18 +124,18 @@ main {
 }
 
 /* Mapbox controls customization */
-.mapboxgl-ctrl-top-right {
+.maplibregl-ctrl-top-right {
     top: 10px;
     right: 10px;
 }
 
-.mapboxgl-ctrl-bottom-left {
+.maplibregl-ctrl-bottom-left {
     bottom: 10px;
     left: 10px;
 }
 
 /* Marker cursor */
-.mapboxgl-marker {
+.maplibregl-marker {
     cursor: move;
 }
 
@@ -162,7 +162,7 @@ main {
 }
 
 /* Coordinate labels */
-.coordinate-label .mapboxgl-popup-content {
+.coordinate-label .maplibregl-popup-content {
     background-color: rgba(0, 0, 0, 0.8);
     color: white;
     font-family: monospace;
@@ -171,23 +171,23 @@ main {
     border-radius: 3px;
 }
 
-.coordinate-label .mapboxgl-popup-tip {
+.coordinate-label .maplibregl-popup-tip {
     border-top-color: rgba(0, 0, 0, 0.8);
 }
 
 /* Vertex delete popup */
-.vertex-delete-popup .mapboxgl-popup-content {
+.vertex-delete-popup .maplibregl-popup-content {
     padding: 4px;
     background: white;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     border-radius: 50%;
 }
 
-.vertex-delete-popup .mapboxgl-popup-tip {
+.vertex-delete-popup .maplibregl-popup-tip {
     border-top-color: white;
 }
 
-.vertex-delete-popup.mapboxgl-popup-anchor-top .mapboxgl-popup-tip {
+.vertex-delete-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip {
     border-bottom-color: white;
     border-top-color: transparent;
 }
@@ -592,14 +592,14 @@ main {
 }
 
 /* Shift right-anchored map overlays clear of the settings panel when open */
-#map.settings-open .mapboxgl-ctrl-top-right,
-#map.settings-open .mapboxgl-ctrl-bottom-right,
+#map.settings-open .maplibregl-ctrl-top-right,
+#map.settings-open .maplibregl-ctrl-bottom-right,
 #map.settings-open .texture-size-info {
     transform: translateX(-310px);
 }
 
-.mapboxgl-ctrl-top-right,
-.mapboxgl-ctrl-bottom-right,
+.maplibregl-ctrl-top-right,
+.maplibregl-ctrl-bottom-right,
 .texture-size-info {
     transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }

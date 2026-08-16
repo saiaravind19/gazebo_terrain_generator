@@ -40,16 +40,22 @@ def check_dem_file(image_file: str) -> bool:
 def download_tile_image(args: tuple) -> None:
     """
     Download a single DEM tile image and save it to the specified directory.
+
+    Elevation data comes from AWS Terrain Tiles (Mapzen/Tilezen), a free, key-less
+    dataset on the AWS Registry of Open Data. Tiles use the "terrarium" RGB encoding
+    (256×256 PNG); see height_map_generator.py for the decode formula.
+    reference: https://registry.opendata.aws/terrain-tiles/
+
     Args:
         args (tuple): A tuple containing zoom level, x tile number, y tile number,
-                      output directory, and Mapbox API key.
+                      and output directory.
     Returns:
         None
     """
-    zoom, tile_x, tile_y, output_dir, api_key = args
+    zoom, tile_x, tile_y, output_dir = args
     tile_url = (
-        f"https://api.mapbox.com/raster/v1/mapbox.mapbox-terrain-dem-v1/"
-        f"{zoom}/{tile_x}/{tile_y}.webp?sku=101CUGorpzzyK&access_token={api_key}"
+        f"https://s3.amazonaws.com/elevation-tiles-prod/terrarium/"
+        f"{zoom}/{tile_x}/{tile_y}.png"
     )
     img = fetch_image_from_url(tile_url)
     if img is not None:
@@ -59,16 +65,15 @@ def download_tile_image(args: tuple) -> None:
         print(f"[WARN] Skipped tile ({tile_x}, {tile_y}) due to download error.")
 
 
-def download_dem_data(bound_array, output_directory, zoom: int, api_key: str) -> None:
+def download_dem_data(bound_array, output_directory, zoom: int) -> None:
     """
     Download DEM data for a specified bounding box at a given zoom level.
     Args:
         bound_array: Bounding box dict with 'northwest' and 'southeast' keys.
         output_directory (str): The directory where the downloaded DEM tiles will be saved.
         zoom (int): Zoom level for DEM tiles. Should be min(satellite_zoom, 13) —
-                    Mapbox terrain-dem-v1 source data is ~30m (SRTM), so zoom > 13
+                    AWS Terrain Tiles source data is ~30m (SRTM), so zoom > 13
                     yields no additional real-world elevation detail.
-        api_key (str): Mapbox API key.
     Returns:
         None
     """
@@ -87,7 +92,7 @@ def download_dem_data(bound_array, output_directory, zoom: int, api_key: str) ->
             for tile_y in range(tile_y_start, tile_y_end + 1):
                 dem_file = os.path.join(output_directory, f"[{zoom},{tile_y},{tile_x}].png")
                 if not check_dem_file(dem_file):
-                    tasks.append((zoom, tile_x, tile_y, output_directory, api_key))
+                    tasks.append((zoom, tile_x, tile_y, output_directory))
 
         with Pool(processes=cpu_count()) as pool:
             pool.map(download_tile_image, tasks)

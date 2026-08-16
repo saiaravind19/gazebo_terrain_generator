@@ -5,16 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gazebo Terrain Generator</title>
 
-    <!-- Mapbox GL JS -->
-    <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
-    <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
+    <!-- MapLibre GL JS (open-source, key-less fork of Mapbox GL JS) -->
+    <link href='https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css' rel='stylesheet' />
+    <script src='https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js'></script>
 
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
-    <!-- Mapbox GL Draw -->
-    <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.css">
-    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.js"></script>
+    <!-- Mapbox GL Draw (used programmatically; works on top of MapLibre) -->
+    <link rel="stylesheet" href="https://unpkg.com/@mapbox/mapbox-gl-draw@1.4.3/dist/mapbox-gl-draw.css">
+    <script src="https://unpkg.com/@mapbox/mapbox-gl-draw@1.4.3/dist/mapbox-gl-draw.js"></script>
 
     <!-- Turf JS -->
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
@@ -92,7 +92,7 @@
                                     <i class="fas fa-chevron-down"></i>
                                 </button>
                             </div>
-                            <input type="hidden" id="setting-tile-source" value="https://mt0.google.com/vt?lyrs=s&x={x}&s=&y={y}&z={z}">
+                            <input type="hidden" id="setting-tile-source" value="https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}">
                             <div id="source-presets-dropdown" class="source-presets-dropdown"></div>
                         </div>
 
@@ -116,14 +116,6 @@
                             </select>
                         </div>
 
-                        <div class="settings-field settings-field--row">
-                            <label>Mapbox API Key <i class="fas fa-circle-info tooltip-icon" data-tooltip="Required for satellite imagery, elevation data, and geocoding. Stored in your browser only - never sent to this server."></i></label>
-                            <button id="setting-mapbox-key-btn" class="mapbox-key-btn">
-                                <span id="setting-mapbox-key-status">Not set</span>
-                                <i class="fas fa-edit"></i>
-                            </button>
-                        </div>
-
                         <button id="settings-revert-btn" class="settings-revert-btn">
                             <i class="fas fa-undo"></i> Revert to Defaults
                         </button>
@@ -140,25 +132,6 @@
                 </div>
             </aside> -->
         </main>
-    </div>
-
-    <!-- API key modal -->
-    <div id="apikey-modal-overlay" class="modal-overlay">
-        <div class="name-modal">
-            <div class="name-modal-header">
-                <i class="fas fa-key"></i>
-                <h2>Mapbox API Key</h2>
-            </div>
-            <p class="name-modal-hint">Paste your Mapbox public token below.<br>It is stored locally in your browser only.</p>
-            <textarea id="apikey-modal-input" class="apikey-modal-input" placeholder="pk.eyJ1Ij..." rows="4" spellcheck="false"></textarea>
-            <p id="apikey-modal-error" class="apikey-modal-error" style="display:none"></p>
-            <div class="name-modal-actions">
-                <button id="apikey-modal-cancel" class="name-modal-btn name-modal-btn--cancel">Cancel</button>
-                <button id="apikey-modal-confirm" class="name-modal-btn name-modal-btn--confirm">
-                    <i class="fas fa-check"></i> Save
-                </button>
-            </div>
-        </div>
     </div>
 
     <!-- Name modal -->

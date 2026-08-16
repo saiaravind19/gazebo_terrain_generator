@@ -17,10 +17,15 @@ class GlobalParam:
     # Path to the SDF/XML world templates directory
     TEMPLATE_DIR_PATH           = str(Path(__file__).resolve().parents[2] / 'templates')
 
-    # DEM zoom cap — Mapbox Terrain-DEM-v1 has real SRTM data only up to zoom 13
+    # DEM zoom cap — AWS Terrain Tiles are backed by ~30m SRTM data, so zoom > 13
+    # yields no additional real-world elevation detail.
     DEM_RESOLUTION              = 13
 
-    # Building vector tile zoom — Mapbox streets-v8 has full footprint detail at zoom 15
+    # AWS Terrain Tiles (terrarium encoding) are 256×256px, unlike Mapbox's 512px tiles.
+    DEM_TILE_PX                 = 256
+
+    # OSM building query zoom — kept for API compatibility; buildings are now fetched
+    # via the Overpass API by bounding box rather than per-tile.
     DEM_BUILDING_RESOLUTION     = 15
 
     # Valid Gazebo heightmap sizes (must be 2^n+1)

@@ -59,9 +59,9 @@ class HeightmapGenerator(ConcatImage):
             py = int((lat_max - lat) / (lat_max - lat_min) * height)
             b, g, r = dem_img[py, px]
             b, g, r = float(b), float(g), float(r)
-            # convert pixel value to elevation in meters
-            # reference: https://docs.mapbox.com/data/tilesets/reference/mapbox-terrain-dem-v1/
-            height = ((r * 256 * 256 + g * 256 + b) * 0.1) - 10000
+            # convert pixel value to elevation in meters (AWS Terrain Tiles "terrarium" encoding)
+            # reference: https://github.com/tilezen/joerd/blob/master/docs/formats.md#terrarium
+            height = (r * 256 + g + b / 256) - 32768
             return height
         else:
             print("Tile not found", tile_x, tile_y, dem_resolution, lat, lon)
@@ -112,8 +112,10 @@ class HeightmapGenerator(ConcatImage):
 
         # Convert to float to avoid overflow during calculation
         cropped_image_float = cropped_image.astype(np.float32)
-        # Calculate height map - changed to use float operations
-        height_map = ((cropped_image_float[:, :, 2] * 256 * 256 + cropped_image_float[:, :, 1] * 256 + cropped_image_float[:, :, 0]) * 0.1) - 10000
+        # Calculate height map using the AWS Terrain Tiles "terrarium" encoding.
+        # cv2 loads BGR, so channel 2 = R, channel 1 = G, channel 0 = B.
+        # reference: https://github.com/tilezen/joerd/blob/master/docs/formats.md#terrarium
+        height_map = (cropped_image_float[:, :, 2] * 256 + cropped_image_float[:, :, 1] + cropped_image_float[:, :, 0] / 256) - 32768
         self.max_height = np.max(height_map)
         self.min_height = np.min(height_map)
 

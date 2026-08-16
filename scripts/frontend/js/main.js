@@ -3,7 +3,6 @@
     'use strict';
 
     let map = null;
-    let mapboxApiKey = null;
     let centerMarker = null;
     let draw = null;
     let coordinateOverlays = [];
@@ -22,7 +21,7 @@
         includeBuildings: true,
         includeHelipad: false,
         helipadHeight: 3,
-        tileSource: 'https://mt0.google.com/vt?lyrs=s&x={x}&s=&y={y}&z={z}',
+        tileSource: 'https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         parallelDownloads: 4,
         gazeboVersion: 'harmonic',
         targetHeightmapSize: 'auto'
@@ -31,7 +30,7 @@
     const config = loadConfig();
 
     const TILE_SOURCES = [
-        { label: 'Mapbox Satellite', url: 'https://api.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}@2x.jpg?access_token={key}' },
+        { label: 'ESRI World Imagery', url: 'https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}' },
         null,
         { label: 'Bing Maps', url: 'http://ecn.t0.tiles.virtualearth.net/tiles/r{quad}.jpeg?g=129&mkt=en&stl=H' },
         { label: 'Bing Maps Satellite', url: 'http://ecn.t0.tiles.virtualearth.net/tiles/a{quad}.jpeg?g=129&mkt=en&stl=H' },
@@ -45,7 +44,6 @@
         { label: 'Open Street Maps', url: 'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png' },
         { label: 'Open Cycle Maps', url: 'http://a.tile.opencyclemap.org/cycle/{z}/{x}/{y}.png' },
         null,
-        { label: 'ESRI World Imagery', url: 'http://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}' },
         { label: 'Wikimedia Maps', url: 'https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}.png' },
         null,
         { label: 'Carto Light', url: 'http://cartodb-basemaps-c.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png' },
@@ -83,133 +81,48 @@
         document.getElementById('setting-parallel-downloads').value = config.parallelDownloads;
         document.getElementById('setting-gazebo-version').value = config.gazeboVersion;
         document.getElementById('setting-target-heightmap-size').value = config.targetHeightmapSize;
-        updateMapboxKeyStatus(loadMapboxKey());
 
         const matchedSource = TILE_SOURCES.find(s => s && s.url === config.tileSource);
         document.getElementById('setting-source-display').textContent =
             matchedSource ? matchedSource.label : 'Custom';
     }
 
-    const MAPBOX_KEY_STORAGE_KEY = 'gazebo_terrain_generator_mapbox_key';
-
-    function loadMapboxKey() {
-        return localStorage.getItem(MAPBOX_KEY_STORAGE_KEY) || '';
-    }
-
-    function saveMapboxKey(key) {
-        localStorage.setItem(MAPBOX_KEY_STORAGE_KEY, key);
-    }
-
-    function openApikeyModal(onSave) {
-        const overlay = document.getElementById('apikey-modal-overlay');
-        const input = document.getElementById('apikey-modal-input');
-        const errorEl = document.getElementById('apikey-modal-error');
-        const confirmBtn = document.getElementById('apikey-modal-confirm');
-        const cancelBtn = document.getElementById('apikey-modal-cancel');
-
-        const hasExistingKey = !!loadMapboxKey();
-        input.value = hasExistingKey ? loadMapboxKey() : '';
-        errorEl.style.display = 'none';
-        cancelBtn.style.display = hasExistingKey ? '' : 'none';
-
-        overlay.classList.add('open');
-        input.focus();
-
-        async function save() {
-            const key = input.value.trim();
-            if (!key) return;
-
-            confirmBtn.disabled = true;
-            confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Validating...';
-            errorEl.style.display = 'none';
-
-            try {
-                const resp = await fetch(
-                    `https://api.mapbox.com/styles/v1/mapbox/satellite-v9?access_token=${encodeURIComponent(key)}`
-                );
-                if (resp.status === 401) {
-                    throw new Error('Invalid API key — please check and try again.');
-                } else if (!resp.ok) {
-                    throw new Error(`Validation failed (HTTP ${resp.status}).`);
-                }
-                overlay.classList.remove('open');
-                saveMapboxKey(key);
-                updateMapboxKeyStatus(key);
-                if (onSave) onSave(key);
-            } catch (e) {
-                const msg = (e instanceof TypeError)
-                    ? 'Could not reach Mapbox API - check if your key is valid and make sure you are connected to internet.'
-                    : e.message;
-                errorEl.textContent = msg;
-                errorEl.style.display = 'block';
-            } finally {
-                confirmBtn.disabled = false;
-                confirmBtn.innerHTML = '<i class="fas fa-check"></i> Save';
+    // Base map style: a plain raster layer served from ESRI World Imagery.
+    // No API key required — MapLibre renders raster tiles directly.
+    const BASE_MAP_STYLE = {
+        version: 8,
+        sources: {
+            'satellite-base': {
+                type: 'raster',
+                tiles: ['https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+                tileSize: 256,
+                attribution: 'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'
             }
-        }
-
-        function cancel() {
-            overlay.classList.remove('open');
-        }
-
-        confirmBtn.onclick = save;
-        cancelBtn.onclick = cancel;
-    }
-
-    function updateMapboxKeyStatus(key) {
-        const btn = document.getElementById('setting-mapbox-key-btn');
-        const status = document.getElementById('setting-mapbox-key-status');
-        if (key) {
-            status.textContent = 'Configured';
-            btn.classList.add('key-set');
-        } else {
-            status.textContent = 'Not set';
-            btn.classList.remove('key-set');
-        }
-    }
+        },
+        layers: [
+            { id: 'satellite-base', type: 'raster', source: 'satellite-base' }
+        ]
+    };
 
     // Initialize the application
     async function init() {
-        mapboxApiKey = loadMapboxKey();
-        updateMapboxKeyStatus(mapboxApiKey);
-
-        if (mapboxApiKey) {
-            try {
-                const resp = await fetch(
-                    `https://api.mapbox.com/styles/v1/mapbox/satellite-v9?access_token=${encodeURIComponent(mapboxApiKey)}`
-                );
-                if (!resp.ok) mapboxApiKey = '';
-            } catch (e) {
-                mapboxApiKey = '';
-            }
-        }
-
-        if (!mapboxApiKey) {
-            openApikeyModal(function (key) {
-                mapboxApiKey = key;
-                mapboxgl.accessToken = key;
-                initializeMap();
-            });
-            return;
-        }
-        mapboxgl.accessToken = mapboxApiKey;
         initializeMap();
     }
 
-    // Initialize Mapbox map
+    // Initialize MapLibre map
     function initializeMap() {
-        map = new mapboxgl.Map({
+        map = new maplibregl.Map({
             container: 'map',
-            style: 'mapbox://styles/mapbox/satellite-streets-v12',
+            style: BASE_MAP_STYLE,
             center: [-122.4194, 37.7749], // Default: San Francisco
             zoom: 12
         });
 
         // Add navigation controls
-        map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+        map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
         // Add scale control
-        map.addControl(new mapboxgl.ScaleControl(), 'bottom-left');
+        map.addControl(new maplibregl.ScaleControl(), 'bottom-left');
 
         map.on('load', function () {
             console.log('Map loaded successfully');
@@ -251,7 +164,7 @@
         const center = map.getCenter();
 
         // Create draggable marker
-        centerMarker = new mapboxgl.Marker({
+        centerMarker = new maplibregl.Marker({
             draggable: true,
             color: '#e74c3c'
         })
@@ -312,14 +225,13 @@
             return;
         }
 
-        // Fall back to Mapbox Geocoding API
+        // Fall back to the free OpenStreetMap Nominatim geocoding API
         try {
-            const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(value)}.json?limit=1&access_token=${mapboxApiKey}`;
-            const resp = await fetch(url);
+            const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(value)}`;
+            const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
             const data = await resp.json();
-            if (data.features && data.features.length > 0) {
-                const [lng, lat] = data.features[0].center;
-                flyToLocation(lat, lng);
+            if (Array.isArray(data) && data.length > 0) {
+                flyToLocation(parseFloat(data[0].lat), parseFloat(data[0].lon));
             } else {
                 showError('Location not found. Try a different name or use lat, lng format.');
             }
@@ -523,7 +435,7 @@
 
         const coords = [point.geometry.coordinates[0], point.geometry.coordinates[1]];
 
-        vertexDeletePopup = new mapboxgl.Popup({
+        vertexDeletePopup = new maplibregl.Popup({
             closeButton: false,
             closeOnClick: false,
             className: 'vertex-delete-popup',
@@ -625,7 +537,7 @@
     function setupDrawControls() {
         // Create custom control container
         const controlContainer = document.createElement('div');
-        controlContainer.className = 'mapboxgl-ctrl mapboxgl-ctrl-group custom-draw-controls';
+        controlContainer.className = 'maplibregl-ctrl maplibregl-ctrl-group custom-draw-controls';
 
         // Draw polygon button
         const drawButton = document.createElement('button');
@@ -679,7 +591,7 @@
         controlContainer.appendChild(settingsButton);
 
         // Add to map
-        map.getContainer().querySelector('.mapboxgl-ctrl-top-right').appendChild(controlContainer);
+        map.getContainer().querySelector('.maplibregl-ctrl-top-right').appendChild(controlContainer);
     }
 
     // Update coordinate overlays
@@ -696,7 +608,7 @@
                     // Skip last coordinate (same as first)
                     if (index === coordinates.length - 1) return;
 
-                    const popup = new mapboxgl.Popup({
+                    const popup = new maplibregl.Popup({
                         closeButton: false,
                         closeOnClick: false,
                         className: 'coordinate-label'
@@ -772,11 +684,15 @@
     }
 
     async function fetchModelName(lng, lat) {
-        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?types=locality,place,region&limit=1&access_token=${mapboxApiKey}`;
-        const resp = await fetch(url);
+        // Reverse geocode via OpenStreetMap Nominatim (free, no key)
+        const url = `https://nominatim.openstreetmap.org/reverse?format=json&zoom=10&addressdetails=1&lat=${lat}&lon=${lng}`;
+        const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
         const data = await resp.json();
-        if (data.features && data.features.length > 0) {
-            const text = data.features[0].text || data.features[0].place_name.split(',')[0];
+        const addr = data && data.address ? data.address : {};
+        const text = addr.city || addr.town || addr.village || addr.hamlet
+            || addr.municipality || addr.county || addr.state
+            || (data.name) || (data.display_name ? data.display_name.split(',')[0] : null);
+        if (text) {
             const slug = text.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
             return slug.charAt(0).toUpperCase() + slug.slice(1);
         }
@@ -881,7 +797,6 @@
             tileData.append('z', tile.z);
             tileData.append('mapName', modelName);
             tileData.append('source', source);
-            tileData.append('mapboxApiKey', mapboxApiKey);
 
             try {
                 const resp = await fetch('/download-tile', { method: 'POST', body: tileData });
@@ -910,7 +825,6 @@
             endData.append('helipadHeight', config.helipadHeight);
             endData.append('gazeboVersion', config.gazeboVersion);
             endData.append('targetHeightmapSize', config.targetHeightmapSize);
-            endData.append('mapboxApiKey', mapboxApiKey);
             const endResp = await fetch('/end-download', { method: 'POST', body: endData });
             const endResult = await endResp.json();
             if (endResult.code !== 200) throw new Error('end-download failed');
@@ -1234,20 +1148,11 @@
             renderEstimateInfo(lastEstimateResult);
         });
 
-        document.getElementById('setting-mapbox-key-btn').addEventListener('click', function () {
-            openApikeyModal(function (key) {
-                mapboxApiKey = key;
-                mapboxgl.accessToken = key;
-                if (!map) initializeMap();
-            });
-        });
-
         document.getElementById('settings-revert-btn').addEventListener('click', function () {
             Object.assign(config, DEFAULT_CONFIG);
             localStorage.removeItem(STORAGE_KEY);
             applyConfigToForm();
             if (gridVisible) { showGrid(); }
-            // Note: API key is intentionally not cleared by revert
         });
     }
 
