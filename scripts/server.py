@@ -263,10 +263,12 @@ def download_world():
 
 	buf = io.BytesIO()
 	with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
-		for fname in os.listdir(map_dir):
-			fpath = os.path.join(map_dir, fname)
-			if os.path.isfile(fpath) and not fname.endswith('.zip'):
-				zf.write(fpath, f"{map_name}/{fname}")
+		for root, dirs, files in os.walk(map_dir):
+			for fname in files:
+				if not fname.endswith('.zip'):
+					fpath = os.path.join(root, fname)
+					arcname = os.path.relpath(fpath, map_dir)
+					zf.write(fpath, arcname)
 		if include_intermediary:
 			tiles_path = os.path.join(map_dir, 'tiles')
 			if os.path.isdir(tiles_path):
